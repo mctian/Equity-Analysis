@@ -6,8 +6,14 @@ import datetime
 import csv
 from datapackage import Package
 
-def get_price_data(t):
+
+def get_data(t):
     data = quandl.get('WIKI/'+t)
+    return data
+
+
+def get_price_data(t, start, end):
+    data = quandl.get('Wiki/'+ t + '.4', start_date=start, end_date=end)
     return data
 
 
@@ -15,7 +21,7 @@ def main():
     universe = get_all_tickers()
     indexes = [2]
     for i in indexes:
-        print(get_price_data(universe[i]))
+        print(get_data(universe[i]))
     return
 
 
@@ -46,10 +52,22 @@ def get_yesterday():
         yesterday += str(today.day - 1)
     return yesterday
 
+
+def format_date(month, day, year):
+    date = str(year)
+    if month < 10:
+        date += '-0' + str(month) + '-'
+    else:
+        date += '-' + str(month) + '-'
+    if day < 10:
+        date += '0' + str(day)
+    else:
+        date += str(day)
+    return date
+
+
 def get_all_tickers():
     package = Package('http://datahub.io/core/s-and-p-500-companies/datapackage.json')
-    resources = package.descriptor['resources']
-    resourceList = [resources[x]['name'] for x in range(0, len(resources))]
     data = package.resources[0].read()
     tickers = []
     for i in range(0,len(data)):
@@ -60,5 +78,3 @@ def get_all_tickers():
 if __name__ == "__main__":
     quandl.ApiConfig.api_key = "RxidFKB69HRV8VFHbXqM"
     main()
-
-    #r = requests.get('http://www.nasdaq.com/screening/companies-by-industry.aspx?exchange=NASDAQ&render=download')
