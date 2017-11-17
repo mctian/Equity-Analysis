@@ -50,10 +50,10 @@ def get_all_tickers():
     package = Package('http://datahub.io/core/s-and-p-500-companies/datapackage.json')
     resources = package.descriptor['resources']
     resourceList = [resources[x]['name'] for x in range(0, len(resources))]
-    print(resourceList)
     data = package.resources[0].read()
-    print(data)
     tickers = []
+    for i in range(0,len(data)):
+        tickers.append(data[i][0])
     return tickers
 
 
