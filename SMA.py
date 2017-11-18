@@ -2,18 +2,15 @@ import DataPull
 import datetime
 
 
-def sma(ticker, start, end):
+def sma(ticker, end, n):
+    start = end - datetime.timedelta(n)
     data = DataPull.get_price_data(ticker, start, end)
-    num_days = DataPull.market_days(start, end)
-    one_day = datetime.timedelta(1)
-    returns = 0
-    j = 0
-    for i in range(1, num_days+1):
-        if DataPull.check_open(start+one_day*i):
-            returns += data.loc[DataPull.format_date(start+one_day*i)]['Close'] - data.loc[DataPull.format_date(start+one_day*j)]['Close']
-            j = i
-    returns = returns / num_days
-    return returns
+    avg = 0
+    for i in range(0, n):
+        if DataPull.check_open(start+datetime.timedelta(i)):
+            avg += data.loc[DataPull.format_date(start+datetime.timedelta(i))]['Close']
+    avg = avg / DataPull.market_days(start, end)
+    return avg
 
 
 def rate_of_return(ticker, end, n):
@@ -29,6 +26,7 @@ def rate_of_return(ticker, end, n):
     return returns
 
 def main():
+    print(sma("AAPL", end=datetime.datetime.today(), n=5))
     print(rate_of_return("AAPL", end=datetime.datetime.today(),n=5))
 
 if __name__ == "__main__":
