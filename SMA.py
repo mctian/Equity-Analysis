@@ -28,6 +28,7 @@ def rate_of_return(ticker, end, n):
 def main():
     print(sma("AAPL", end=datetime.datetime.today(), n=5))
     print(rate_of_return("AAPL", end=datetime.datetime.today(),n=5))
+    DataPull.get_all_tickers(market="Russell3000")
 
 if __name__ == "__main__":
     main()
