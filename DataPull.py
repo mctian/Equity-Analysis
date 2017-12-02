@@ -69,7 +69,7 @@ def get_all_tickers(market):
             tickers.append(data[i][0])
         return tickers
     elif market == "Russell3000":
-        print(convert_pdf_to_txt("ru3000_members.pdf"))
+        return convert_pdf_to_txt("ru3000_members.pdf")
 
 
         # Code to automatically download the Russell3000 Constituent List (not currently working)
@@ -80,6 +80,10 @@ def get_all_tickers(market):
         #return
     else:
         return
+
+
+def not_ticker(inputString):
+    return any(char.isdigit() or char.islower() or char == '&' for char in inputString)
 
 
 def convert_pdf_to_txt(path):
@@ -106,4 +110,8 @@ def convert_pdf_to_txt(path):
     fp.close()
     device.close()
     retstr.close()
-    return text
+
+    words = text.split()
+    words = [s for s in words if len(s) < 5 and not not_ticker(s)]
+    words = list(set(words))
+    return words

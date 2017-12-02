@@ -1,5 +1,7 @@
 import DataPull
 import datetime
+import time
+import scipy
 
 
 def sma(ticker, end, n):
@@ -22,13 +24,27 @@ def rate_of_return(ticker, end, n):
         end -= datetime.timedelta(1)
     returns = data.loc[DataPull.format_date(end)]['Close'] - data.loc[DataPull.format_date(start)]['Close']
     returns = returns / data.loc[DataPull.format_date(start)]['Close']
-    print("returns by holding for " + str(n) + " days: " + str(returns))
     return returns
 
 def main():
-    print(sma("AAPL", end=datetime.datetime.today(), n=5))
-    print(rate_of_return("AAPL", end=datetime.datetime.today(),n=5))
-    DataPull.get_all_tickers(market="Russell3000")
+    start_time = time.time()
+    tickers = DataPull.get_all_tickers(market="Russell3000")
+    valid = []
+    returns = []
+    for ticker in tickers:
+        try:
+            returns.append(rate_of_return(ticker, end=datetime.datetime.today(), n=30))
+            valid.append(ticker)
+        except:
+            pass
+    threshold = scipy.percentile(returns, 90)
+    portfolio = []
+    for i in range(0, len(returns)):
+        if returns[i] > threshold:
+            portfolio.append(valid[i])
+    print(portfolio)
+    print("Duration of program: " + str(time.time()-start_time))
+
 
 if __name__ == "__main__":
     main()
