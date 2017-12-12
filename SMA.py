@@ -26,28 +26,31 @@ def rate_of_return(ticker, end, n):
     returns = returns / data.loc[DataPull.format_date(start)]['Close']
     return returns
 
+
 def main():
     start_time = time.time()
     tickers = DataPull.get_all_tickers(market="Russell3000")
-    valid = []
-    returns = []
-    for ticker in tickers:
-        try:
-            returns.append(rate_of_return(ticker, end=datetime.datetime.today(), n=30))
-            valid.append(ticker)
-        except:
-            pass
-    threshold = scipy.percentile(returns, 90)
-    portfolio = []
-    for i in range(0, len(returns)):
-        if returns[i] > threshold:
-            portfolio.append(valid[i])
-    print(portfolio)
+    DataPull.tickers_to_excel(sorted(tickers), 250)
+
+
+    # Code below only works with unsorted lists
+    #___________________________________________
+    #valid = []
+    #returns = []
+    #for ticker in tickers:
+    #    try:
+    #        returns.append(rate_of_return(ticker, end=datetime.datetime.today(), n=30))
+    #        valid.append(ticker)
+    #    except:
+    #        pass
+    #threshold = scipy.percentile(returns, 90)
+    #portfolio = []
+    #for i in range(0, len(returns)):
+    #    if returns[i] > threshold:
+    #        portfolio.append(valid[i])
+    #print(portfolio)
     print("Duration of program: " + str(time.time()-start_time))
 
 
 if __name__ == "__main__":
     main()
-
-
-

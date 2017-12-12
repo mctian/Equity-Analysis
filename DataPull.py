@@ -9,7 +9,9 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
+import math
 import io
+import csv
 
 quandl.ApiConfig.api_key = "RxidFKB69HRV8VFHbXqM"
 
@@ -70,20 +72,27 @@ def get_all_tickers(market):
         return tickers
     elif market == "Russell3000":
         return convert_pdf_to_txt("ru3000_members.pdf")
-
-
-        # Code to automatically download the Russell3000 Constituent List (not currently working)
-        # ------------------------------------------------------------------------------------------
-        #r = requests.get("https://www.ftserussell.com/files/support-documents/2017-ru3000-membership-list", stream=True)
-        #with open('/tmp/metadata.pdf', 'wb') as f:
-        #    print(f.write(r.content))
-        #return
     else:
         return
 
 
+def tickers_to_excel(tickers, perSheet):
+    sheets = 0
+    count = 0
+    for sheets in range(0, math.ceil(len(tickers) / perSheet)):
+        with open('Equity' + str(sheets) + '.csv', 'w') as f:
+            writer = csv.writer(f)
+            for count in range(sheets * perSheet, perSheet + sheets * perSheet):
+                if count == len(tickers):
+                    break
+                writer.writerow([tickers[count]])
+            sheets += 1
+            f.close()
+    return
+
+
 def not_ticker(inputString):
-    return any(char.isdigit() or char.islower() or char == '&' for char in inputString)
+    return any(char.isdigit() or char == '/' or char.islower() or char == '&' for char in inputString)
 
 
 def convert_pdf_to_txt(path):
