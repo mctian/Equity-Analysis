@@ -30,7 +30,7 @@ def rate_of_return(ticker, end, n):
 def main():
     start_time = time.time()
     tickers = DataPull.get_all_tickers(market="Russell3000")
-    DataPull.tickers_to_excel(sorted(tickers), 250)
+    DataPull.tickers_to_excel(sorted(tickers), 4000)
 
 
     # Code below only works with unsorted lists
