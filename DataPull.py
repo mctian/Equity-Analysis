@@ -12,6 +12,7 @@ from pdfminer.pdfpage import PDFPage
 import math
 import io
 import csv
+import re
 
 quandl.ApiConfig.api_key = "RxidFKB69HRV8VFHbXqM"
 
