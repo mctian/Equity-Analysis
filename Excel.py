@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 
 def getValidTickerIndexes(worksheet):
     columns = []
-    for n, col in enumerate(worksheet.iter_cols(min_row = 3, max_col = len(list(worksheet.columns)), max_row = 3)):
-        for cell in col:
-            if (n + 1) % 2 == 1 and cell.value is not None:
-                columns.append(n + 1)
+    for n, row in enumerate(worksheet.iter_cols(min_row = 3, max_col = len(list(worksheet.columns)), max_row = 3)):
+        for cell in row:
+            if n % 2 == 1 and cell.value is not None:
+                columns.append(n)
     return columns
 
 
@@ -34,7 +34,7 @@ def convertIndexToLetter(index):
             letterIndex += 'Z'
             i = i/26 - 1
         else:
-            letterIndex += chr((remainder-1) + ord('A'))
+            letterIndex += (chr((remainder-1) + ord('A')))
             i = i/26
 
     return ''.join(reversed(letterIndex))
@@ -45,33 +45,22 @@ def getAllTimeSeries(worksheet):
     for i in indexes:
         dates = []
         values = []
-        row_range = len(worksheet[i])
-        endReached = False
+        row_range = 100
         letterIndex = convertIndexToLetter(i)
-        for row in worksheet.iter_rows('{}{}:{}{}'.format(letterIndex, 4, letterIndex, row_range)):
-            for cell in row:
-                if cell.value is not None:
-                    dates.append(cell.value)
-                else:
-                    endReached = True
-                    break
-            if endReached is True:
-                endReached = False
+        for cell in worksheet['{}{}:{}{}'.format(letterIndex, 4, letterIndex, row_range)]:
+            if cell[0].value is not None:
+                dates.append(cell[0].value)
+            else:
                 break
         letterIndex = convertIndexToLetter(i+1)
-        for row in worksheet.iter_rows('{}{}:{}{}'.format(letterIndex, 4, letterIndex, row_range)):
-            for cell in row:
-                if cell.value is not None:
-                    values.append(cell.value)
-                else:
-                    endReached = True
-                    break
-            if endReached is True:
-                endReached = False
+        for cell in worksheet['{}{}:{}{}'.format(letterIndex, 4, letterIndex, row_range)]:
+            if cell[0].value is not None:
+                values.append(cell[0].value)
+            else:
                 break
-        date = np.array(dates, dtype = np.datetime64)
+        dates = np.array(dates, dtype = np.datetime64)
         data = pd.Series(values, index = dates)
-        #at this point, we would store the data somewhere, but we don't have a database :(
+        print i
 
 
 def getTimeSeries(stock, worksheet, factor):
@@ -79,42 +68,26 @@ def getTimeSeries(stock, worksheet, factor):
     i = findTickerIndex(stock, stockList)
     dates = []
     values = []
-    row_range = len(worksheet[i])
-    endReached = False
+    row_range = 400
     letterIndex = convertIndexToLetter(i)
-    for row in worksheet.iter_rows('{}{}:{}{}'.format(letterIndex, 4, letterIndex, row_range)):
-        for cell in row:
-            if cell.value is not None:
-                dates.append(cell.value)
-            else:
-                endReached = True
-                break
-        if endReached is True:
-            endReached = False
+    for cell in worksheet['{}{}:{}{}'.format(letterIndex, 4, letterIndex, row_range)]:
+        if cell[0].value is not None:
+            dates.append(cell[0].value)
+        else:
             break
     letterIndex = convertIndexToLetter(i+1)
-    for row in worksheet.iter_rows('{}{}:{}{}'.format(letterIndex, 4, letterIndex, row_range)):
-        for cell in row:
-            if cell.value is not None:
-                values.append(cell.value)
-            else:
-                endReached = True
-                break
-        if endReached is True:
-            endReached = False
+    for cell in worksheet['{}{}:{}{}'.format(letterIndex, 4, letterIndex, row_range)]:
+        if cell[0].value is not None:
+            values.append(cell[0].value)
+        else:
             break
-    date = np.array(dates, dtype = np.datetime64)
-    data = pd.Series(values, name = factor, index = dates)
+    dates = np.array(dates, dtype = np.datetime64)
+    data = pd.Series(values, index = dates)
     return data
 
 
 if __name__ == "__main__":
-    wb = load_workbook(filename = "USEquity(Dividend Yield).xlsm")
-    ws = wb["Dividend Yield"]
-    dividends = getTimeSeries("AAPL", ws, "Dividend Yield")
     wb = load_workbook(filename = "USEquity(Forward PE).xlsm")
     ws = wb["Forward PE"]
-    forward_pe = getTimeSeries("AAPL", ws, "Forward PE")
-    dividends.plot(legend=True)
-    forward_pe.plot(legend=True)
+    getAllTimeSeries(ws)
     plt.show()
