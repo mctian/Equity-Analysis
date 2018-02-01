@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 
 def getValidTickerIndexes(worksheet):
     columns = []
-    for n, row in enumerate(worksheet.iter_cols(min_row = 3, max_col = len(list(worksheet.columns)), max_row = 3)):
-        for cell in row:
-            if n % 2 == 1 and cell.value is not None:
-                columns.append(n)
+    row = worksheet['{}{}:{}{}'.format('A', 3, 'IYS', 3)]
+    for n, cell in enumerate(row[0]):
+        if n % 2 == 1 and cell.value is not None:
+            columns.append(n)
     return columns
 
 
@@ -22,6 +22,7 @@ def findTickerIndex(ticker, worksheet):
             if str(cell.value) == ticker:
                 return n * 2 + 1
     print(ticker + " not found.")
+
 
 # Excel indexes start with 1 rather than 0
 def convertIndexToLetter(index):
@@ -60,7 +61,7 @@ def getAllTimeSeries(worksheet):
                 break
         dates = np.array(dates, dtype = np.datetime64)
         data = pd.Series(values, index = dates)
-        print i
+    return
 
 
 def getTimeSeries(stock, worksheet, factor):
@@ -82,12 +83,15 @@ def getTimeSeries(stock, worksheet, factor):
         else:
             break
     dates = np.array(dates, dtype = np.datetime64)
-    data = pd.Series(values, index = dates)
+    data = pd.Series(values, index = dates, name = factor)
     return data
 
 
 if __name__ == "__main__":
-    wb = load_workbook(filename = "USEquity(Forward PE).xlsm")
-    ws = wb["Forward PE"]
-    getAllTimeSeries(ws)
+    wb = load_workbook(filename = "USEquity(Price to Book Ratio).xlsm")
+    ws = wb["Price to Book"]
+    pbr = getTimeSeries("AAPL", ws, "PBR")
+    wb = load_workbook(filename = "USEquity(Dividend Yield).xlsm")
+    ws = wb["Dividend Yield"]
+    dy = getTimeSeries("AAPL", ws, "Div Yield")
     plt.show()
