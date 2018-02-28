@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import time #clock, time methods
 
 
+# returns a list of valid indexes in integers, starting from 1
 def getValidTickerIndexes(worksheet):
     columns = []
     row = worksheet['{}{}:{}{}'.format('A', 3, 'IYS', 3)]
@@ -30,15 +31,44 @@ def findTickerIndex(ticker, worksheet):
 def convertIndexToLetter(index):
     i = index
     letterIndex = ""
-
     while i > 0:
         remainder = (i - 1) % 26
         letterIndex = (chr((remainder) + ord('A'))) + letterIndex
         i = int((i - remainder)/26)
-
     return letterIndex
 
 
+# returns list of all tickers
+def getAllTickers(worksheet):
+    tickers = []
+    row = worksheet['{}{}:{}{}'.format('A', 3, 'IYS', 3)]
+    for n, cell in enumerate(row[0]):
+        if n % 2 == 1 and cell.value is not None:
+            tickers.append(str(worksheet[convertIndexToLetter(n)+"1"].value))
+    return tickers
+
+
+# merges date indexes of a csv with deltas < days
+def mergeCloseIndexes(tickers, days):
+    for ticker in tickers:
+        df = pd.read_csv(ticker+".csv", index_col = 0)
+        df.index = pd.to_datetime(df.index)
+        indexToDelete = []
+        for i in range(1,len(df.index)):
+            if abs(df.index[i] - df.index[i-1]) < datetime.timedelta(days):
+                row1 = df.iloc[i-1]
+                row2 = df.iloc[i]
+                rowUpdated = row1.combine_first(row2)
+                df.iloc[i-1] = rowUpdated
+                indexToDelete = [i] + indexToDelete
+        df.drop(df.index[indexToDelete], inplace=True)
+        f = open(ticker+".csv", "w+")
+        f.close()
+        df.to_csv(ticker+".csv")
+    return
+
+
+# outputs all time series to csv files
 def getAllTimeSeries(worksheet, factor):
     indexes = getValidTickerIndexes(worksheet)
     for i in indexes:
@@ -70,6 +100,7 @@ def getAllTimeSeries(worksheet, factor):
     return
 
 
+# outputs an inputed time series to csv file
 def outputTimeSeries(series, factor, name):
     dfSeries = pd.DataFrame({factor: series})
     try:
@@ -82,6 +113,22 @@ def outputTimeSeries(series, factor, name):
     return
 
 
+# outputs all time series for all factors
+def outputAllFactors():
+    factors = ["EPS Growth", "Trailing EPS", "Total Debt to Total Equity", "Volatility 180 Day", "Return on Invested Capital", "Return on Common Equity", "Return on Assets", "Volatility 360 Day", "Earnings Momentum", "Price to Cash Flow", "Price to Book Ratio", "EPS", "Dividend Yield", "Forward PE", "Volume", "Last Price"]
+    filenames = list(map(lambda s: "USEquity(" + s + ").xlsm", factors))
+
+    t0 = time.time()
+    for f in filenames:
+        wb = load_workbook(filename = f)
+        sheet = wb.sheetnames[1]
+        ws = wb[sheet]
+        getAllTimeSeries(ws, sheet)
+        print(time.time() - t0, "seconds wait time")
+        wb.close()
+    return
+
+# returns a specific time series
 def getTimeSeries(stock, worksheet, factor):
     stockList = wb["stock list"]
     i = findTickerIndex(stock, stockList)
@@ -106,14 +153,9 @@ def getTimeSeries(stock, worksheet, factor):
 
 
 if __name__ == "__main__":
-    factors = ["EPS Growth", "Trailing EPS", "Total Debt to Total Equity", "Volatility 180 Day", "Return on Invested Capital", "Return on Common Equity", "Return on Assets", "Volatility 360 Day", "Earnings Momentum", "Price to Cash Flow", "Price to Book Ratio", "EPS", "Dividend Yield", "Forward PE", "Volume", "Last Price"]
-    filenames = list(map(lambda s: "USEquity(" + s + ").xlsm", factors))
-
-    t0 = time.time()
-    for f in filenames:
-        wb = load_workbook(filename = f)
-        sheet = wb.sheetnames[1]
-        ws = wb[sheet]
-        getAllTimeSeries(ws, sheet)
-        print(time.time() - t0, "seconds wait time")
-        wb.close()
+    f = "USEquity(EPS GROWTH).xlsm"
+    wb = load_workbook(filename = f)
+    sheet = wb.sheetnames[1]
+    ws = wb[sheet]
+    tickers = getAllTickers(ws)
+    mergeCloseIndexes(tickers, 4)
