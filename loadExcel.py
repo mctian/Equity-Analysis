@@ -45,6 +45,8 @@ def getAllTickers(worksheet):
     for n, cell in enumerate(row[0]):
         if n % 2 == 1 and cell.value is not None:
             tickers.append(str(worksheet[convertIndexToLetter(n)+"1"].value))
+    df = pd.DataFrame(tickers, columns=['Tickers'])
+    df.to_csv("stocklist.csv", index=False)
     return tickers
 
 
@@ -153,9 +155,6 @@ def getTimeSeries(stock, worksheet, factor):
 
 
 if __name__ == "__main__":
-    f = "USEquity(EPS GROWTH).xlsm"
-    wb = load_workbook(filename = f)
-    sheet = wb.sheetnames[1]
-    ws = wb[sheet]
-    tickers = getAllTickers(ws)
-    mergeCloseIndexes(tickers, 4)
+    wb = load_workbook(filename = "USEquity(Price to Book Ratio).xlsm")
+    ws = wb["Price to Book"]
+    getAllTickers(ws)
