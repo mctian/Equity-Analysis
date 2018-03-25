@@ -50,6 +50,23 @@ def getAllTickers(worksheet):
     return tickers
 
 
+def getAllTickersBySector(worksheet):
+    sectors = ['Consumer Discretionary', 'Consumer Staples', 'Energy', 'Financials', 'Health Care', 'Industrials', 'Information Technology', 'Materials', 'Real Estate', 'Telecommunication Services', 'Utilities']
+    df = pd.read_csv("stocklist.csv",index_col = 0)
+    stocks = set(df.index.tolist())
+    print(stocks)
+    for sector in sectors:
+        tickers = []
+        row = worksheet['{}{}:{}{}'.format('A', 3, 'IYS', 3)]
+        for n, cell in enumerate(row[0]):
+            print(str(worksheet[convertIndexToLetter(n+1)+"1"].value))
+            if n % 2 == 0 and cell.value == sector and str(worksheet[convertIndexToLetter(n+1)+"1"].value) in stocks:
+                print(cell.value)
+                tickers.append(str(worksheet[convertIndexToLetter(n+1)+"1"].value))
+        df = pd.DataFrame(tickers, columns=['Tickers'])
+        df.to_csv(sector+".csv", index=False)
+
+
 # merges date indexes of a csv with deltas < days
 def mergeCloseIndexes(tickers, days):
     for ticker in tickers:
@@ -155,6 +172,6 @@ def getTimeSeries(stock, worksheet, factor):
 
 
 if __name__ == "__main__":
-    wb = load_workbook(filename = "USEquity(Price to Book Ratio).xlsm")
-    ws = wb["Price to Book"]
-    getAllTickers(ws)
+    wb = load_workbook(filename = "USEquity(Sector).xlsm", data_only=True)
+    ws = wb["Sector"]
+    getAllTickersBySector(ws)
