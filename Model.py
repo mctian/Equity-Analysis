@@ -6,30 +6,62 @@ import math
 from sklearn import tree
 
 
-def build(modelType, startIndex, endIndex, target, features):
-    df = pd.read_csv("Information Technology.csv", index_col = 0)
+def build(modelType, startIndex, endIndex, target, features, featureLength, targetLength):
+    df = pd.read_csv("Financials.csv", index_col = 0)
     stocks = df.index.tolist()
     allFeatures = []
     allTargets = []
-    for stock in stocks:
-        featureValues = retrieveData(stock, features, startIndex, endIndex, indexes = [])
-        if target == 'Rate of Return':
-            targetValues = retrieveData(stock, 'Last Price', endIndex+1, abs(endIndex-startIndex) + endIndex + 1, indexes = [])
-        featureValues.dropna(axis = 0, how = 'any', inplace = True)
-        targetValues.dropna(axis = 0, how = 'any', inplace = True)
-        if featureValues.empty == False and targetValues.empty == False:
-            ror = rateOfReturn(targetValues)
-            averageValues = featureValues.mean(axis = 0)
-            allFeatures.append(averageValues)
-            allTargets.append(ror)
-    allTargets = getPercentile(allTargets, 90)
+    currentIndex = startIndex
+    while currentIndex + featureLength + targetLength - 1 != endIndex + 1:
+        currentTargets = []
+        for stock in stocks:
+            featureValues = retrieveData(stock, features, currentIndex, currentIndex + featureLength - 1, indexes = [])
+            if target == 'Rate of Return':
+                targetValues = retrieveData(stock, 'Last Price', currentIndex + featureLength, currentIndex + featureLength + targetLength - 1, indexes = [])
+            featureValues.dropna(axis = 0, how = 'any', inplace = True)
+            targetValues.dropna(axis = 0, how = 'any', inplace = True)
+            if featureValues.empty == False and targetValues.empty == False:
+                ror = rateOfReturn(targetValues)
+                averageValues = featureValues.mean(axis = 0)
+                allFeatures.append(averageValues)
+                currentTargets.append(ror)
+        allTargets = allTargets + getPercentile(currentTargets, 90)
+        currentIndex += 1
+        print(len(allTargets))
+        print(len(allFeatures))
     dt = modelType(allTargets, allFeatures)
     visualizeDecisionTreeClassifier(dt, str(startIndex) + ": Top 90")
     return dt
 
 
+def buildWithIndexes(modelType, indexes, target, features, featureLength, targetLength):
+    df = pd.read_csv("Financials.csv", index_col = 0)
+    stocks = df.index.tolist()
+    allFeatures = []
+    allTargets = []
+    for i in indexes:
+        for j in range(i,i+targetLength):
+            currentTargets = []
+            for stock in stocks:
+                featureValues = retrieveData(stock, features, j, j + featureLength - 1, indexes = [])
+                if target == 'Rate of Return':
+                    targetValues = retrieveData(stock, 'Last Price', j + featureLength, j + featureLength + targetLength - 1, indexes = [])
+                featureValues.dropna(axis = 0, how = 'any', inplace = True)
+                targetValues.dropna(axis = 0, how = 'any', inplace = True)
+                if featureValues.empty == False and targetValues.empty == False:
+                    ror = rateOfReturn(targetValues)
+                    averageValues = featureValues.mean(axis = 0)
+                    allFeatures.append(averageValues)
+                    currentTargets.append(ror)
+            allTargets = allTargets + getPercentile(currentTargets, 90)
+            print(len(allTargets))
+            print(len(allFeatures))
+    dt = modelType(allTargets, allFeatures)
+    return dt
+
+
 def predict(model, startIndex, endIndex, features):
-    df = pd.read_csv("Information Technology.csv", index_col = 0)
+    df = pd.read_csv("Financials.csv", index_col = 0)
     stocks = df.index.tolist()
     allFeatures = []
     addedStocks = []
@@ -52,40 +84,19 @@ def printPredictedPerformers(stocks, predictions):
     return performers
 
 
-def test(max, length):
+def splitData(max, targetLength, featureLength):
     trees = []
-    indexes = np.arange(max * -1 -1 , -1 * length * 3)
+    indexes = np.arange(max * -1 -1 , -1 * (targetLength + featureLength), targetLength)
     np.random.shuffle(indexes)
     train, validate, test = np.split(indexes, [int(.6*len(indexes)), int(.8*len(indexes))])
     print(train)
     print(validate)
     print(test)
-    count = 0
-    allPredictions = []
-    allActPercentiles = []
-    avgPrecision = 0
-    precisions = []
-    for i in train:
-        count += 1
-        tree = build(modelType = decisionTreeClassifier, startIndex = i, endIndex = i+length-1, target= 'Rate of Return', features = featureList)
-        addedStocks, predictions = predict(tree, startIndex = i+length, endIndex = i+2*length-1, features = featureList)
-        actual = []
-        for stock in addedStocks:
-            actual.append(rateOfReturn(retrieveData(stock, 'Last Price', i+2*length, i+3*length-1, [])))
-        actPercentiles = getPercentile(actual, 90)
-        allActPercentiles.append(actPercentiles)
-        allPredictions.append(predictions)
-        if(len(predictions)>0 and len(actPercentiles)>0):
-            prec = precision(actPercentiles, predictions)
-            avgPrecision = (avgPrecision * (count - 1) + prec)/count
-            print("avg: " + str(avgPrecision))
-            print(str(count/len(train)*100)+" percent complete")
-            precisions.append(prec)
-    graphPrecisions(np.asarray(precisions))
-    pass
+    return train, validate, test
 
-def graphPrecisions(precisionList):
+def graphPrecisions(precisionList, name):
     plt.hist(precisionList, bins='auto')
+    plt.title(name)
     plt.show()
 
 # either use startIndex/endIndex or indexes, not both
@@ -102,11 +113,10 @@ def retrieveData(ticker, features, startIndex, endIndex, indexes):
 
 
 def decisionTreeClassifier(targetValues, featureValues):
-    X = np.vstack(featureValues)
-    if len(featureValues) == 1:
-        X = X.reshape(-1,1)
     Y = np.vstack(targetValues)
-    clf = tree.DecisionTreeClassifier(max_depth=5,min_samples_leaf=5)
+    Y = Y.reshape(-1,1)
+    X = np.vstack(featureValues)
+    clf = tree.DecisionTreeClassifier(max_features = 6, min_samples_leaf = 5)
     clf.fit(X,Y)
     return clf
 
@@ -143,8 +153,6 @@ def getPercentileTickers(tickers, values, percentile):
     for i, val in enumerate(values):
         if val > cutoff:
             aboveCutoff.append(tickers[i])
-        else:
-            aboveCutoff.append(tickers[i])
     return aboveCutoff
 
 
@@ -163,7 +171,7 @@ def getPercentile(values, percentile):
 
 # calculates rate of return using logs
 def rateOfReturn(prices):
-    if len(prices)==0:
+    if len(prices) == 0:
         return math.nan;
     if type(prices) == list:
         return (math.log1p(prices[-1]) - math.log1p(prices[0]))
@@ -172,17 +180,37 @@ def rateOfReturn(prices):
 
 # exports a graphic representation of a decision tree classifier
 def visualizeDecisionTreeClassifier(dtree, name):
-    import graphviz
-    dot_data = tree.export_graphviz(dtree, out_file=name+'.dot')
+    #import graphviz
+    #dot_data = tree.export_graphviz(dtree, out_file=name+'.dot')
     #graph = graphviz.Source(dot_data)
     #graph.render(name)
+    pass
 
 
 if __name__ == "__main__":
     t0 = time.time()
     featureList = ['Price to Book', 'Price to Cash Flow', 'Dividend Yield', 'EPS Growth', 'Trailing EPS', 'Total Debt to Total Equity', 'EPS', 'Volatility 180 D', 'Return on Invested Capital', 'Return on Common Equity', 'Return on Assets']
-    #test(200,24)
-    tree = build(modelType = decisionTreeClassifier, startIndex = -48, endIndex = -25, target= 'Rate of Return', features = featureList)
-    addedStocks, predictions = predict(tree, startIndex = -24, endIndex = -1, features = featureList)
-    printPredictedPerformers(addedStocks, predictions)
+    train, validate, test = splitData(350,3,36)
+    tree = buildWithIndexes(modelType = decisionTreeClassifier, indexes = train, target= 'Rate of Return', features = featureList, featureLength = 36, targetLength = 3)
+    prec25 = []
+    prec50 = []
+    prec75 = []
+    prec90 = []
+    for i in validate:
+        addedStocks, predictions = predict(tree, startIndex = i, endIndex = i+35, features = featureList)
+        actual = []
+        for stock in addedStocks:
+            actual.append(rateOfReturn(retrieveData(stock, 'Last Price', i+36, i+38, [])))
+        prec90.append(precision(getPercentile(actual, 90),predictions))
+        prec75.append(precision(getPercentile(actual, 75),predictions))
+        prec50.append(precision(getPercentile(actual, 50),predictions))
+        prec25.append(precision(getPercentile(actual, 25),predictions))
     print(time.time() - t0, "seconds wait time")
+    print("25 std dev: " + str(np.std(prec25)) + " mean: " + str(np.mean(prec25)))
+    print("50 std dev: " + str(np.std(prec50)) + " mean: " + str(np.mean(prec50)))
+    print("75 std dev: " + str(np.std(prec75)) + " mean: " + str(np.mean(prec75)))
+    print("90 std dev: " + str(np.std(prec90)) + " mean: " + str(np.mean(prec90)))
+    graphPrecisions(prec25, "25 percentile")
+    graphPrecisions(prec50, "50 percentile")
+    graphPrecisions(prec75, "75 percentile")
+    graphPrecisions(prec90, "90 percentile")
