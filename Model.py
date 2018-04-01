@@ -198,6 +198,7 @@ if __name__ == "__main__":
     prec90 = []
     for i in validate:
         addedStocks, predictions = predict(tree, startIndex = i, endIndex = i+35, features = featureList)
+        print(predictions)
         actual = []
         for stock in addedStocks:
             actual.append(rateOfReturn(retrieveData(stock, 'Last Price', i+36, i+38, [])))
