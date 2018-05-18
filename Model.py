@@ -25,12 +25,12 @@ def build(modelType, startIndex, endIndex, target, features, featureLength, targ
                 averageValues = featureValues.mean(axis = 0)
                 allFeatures.append(averageValues)
                 currentTargets.append(ror)
-        allTargets = allTargets + getPercentile(currentTargets, 90)
+        allTargets = allTargets + getPercentile(currentTargets, 50)
         currentIndex += 1
         print(len(allTargets))
         print(len(allFeatures))
     dt = modelType(allTargets, allFeatures)
-    visualizeDecisionTreeClassifier(dt, str(startIndex) + ": Top 90")
+    visualizeDecisionTreeClassifier(dt, str(startIndex) + ": Top 50")
     return dt
 
 
@@ -53,7 +53,7 @@ def buildWithIndexes(modelType, indexes, target, features, featureLength, target
                     averageValues = featureValues.mean(axis = 0)
                     allFeatures.append(averageValues)
                     currentTargets.append(ror)
-            allTargets = allTargets + getPercentile(currentTargets, 90)
+            allTargets = allTargets + getPercentile(currentTargets, 50)
             print(len(allTargets))
             print(len(allFeatures))
     dt = modelType(allTargets, allFeatures)
@@ -73,6 +73,21 @@ def predict(model, startIndex, endIndex, features):
             allFeatures.append(averageValues)
             addedStocks.append(stock)
     return addedStocks, model.predict(allFeatures)
+
+
+def predict_probabilities(model, startIndex, endIndex, features):
+    df = pd.read_csv("Financials.csv", index_col = 0)
+    stocks = df.index.tolist()
+    allFeatures = []
+    addedStocks = []
+    for count, stock in enumerate(stocks):
+        featureValues = retrieveData(stock, features, startIndex, endIndex, indexes = [])
+        featureValues.dropna(axis = 0, how = 'any', inplace = True)
+        if featureValues.empty == False:
+            averageValues = featureValues.mean(axis = 0)
+            allFeatures.append(averageValues)
+            addedStocks.append(stock)
+    return addedStocks, model.predict_proba(allFeatures)
 
 
 def printPredictedPerformers(stocks, predictions):
@@ -192,26 +207,41 @@ if __name__ == "__main__":
     featureList = ['Price to Book', 'Price to Cash Flow', 'Dividend Yield', 'EPS Growth', 'Trailing EPS', 'Total Debt to Total Equity', 'EPS', 'Volatility 180 D', 'Return on Invested Capital', 'Return on Common Equity', 'Return on Assets']
     train, validate, test = splitData(350,3,36)
     tree = buildWithIndexes(modelType = decisionTreeClassifier, indexes = train, target= 'Rate of Return', features = featureList, featureLength = 36, targetLength = 3)
-    prec25 = []
-    prec50 = []
-    prec75 = []
-    prec90 = []
+    above50 = {'90':0, '80':0, '70':0}
+    seen = {'90':0, '80':0, '70':0}
     for i in validate:
-        addedStocks, predictions = predict(tree, startIndex = i, endIndex = i+35, features = featureList)
-        print(predictions)
+        #addedStocks, predictions = predict(tree, startIndex = i, endIndex = i+35, features = featureList)
+        #print(predictions)
+        addedStocks, probabilities = predict_probabilities(tree, startIndex = i, endIndex = i+35, features = featureList)
         actual = []
+        better90 = []
+        better80 = []
+        better70 = []
         for stock in addedStocks:
             actual.append(rateOfReturn(retrieveData(stock, 'Last Price', i+36, i+38, [])))
-        prec90.append(precision(getPercentile(actual, 90),predictions))
-        prec75.append(precision(getPercentile(actual, 75),predictions))
-        prec50.append(precision(getPercentile(actual, 50),predictions))
-        prec25.append(precision(getPercentile(actual, 25),predictions))
+        for i in range(len(probabilities)):
+            if probabilities[i][0] > 0.7:
+                better70.append(1)
+            else:
+                better70.append(0)
+            if probabilities[i][0] > 0.8:
+                better80.append(1)
+            else:
+                better80.append(0)
+            if probabilities[i][0] > 0.9:
+                better90.append(1)
+            else:
+                better90.append(0)
+        if len(better90) != 0:
+            above50['90'] = (precision(getPercentile(actual, 50), better90) * len(better90) + above50['90'] * seen['90']) /  (seen['90'] + len(better90))
+            seen['90'] = seen['90'] + len(better90)
+        if len(better80) != 0:
+            above50['80'] = (precision(getPercentile(actual, 50), better80) * len(better80) + above50['80'] * seen['80']) /  (seen['80'] + len(better80))
+            seen['80'] = seen['80'] + len(better80)
+        if len(better70) != 0:
+            above50['70'] = (precision(getPercentile(actual, 50), better70) * len(better70) + above50['70'] * seen['70']) /  (seen['70'] + len(better70))
+            seen['70'] = seen['70'] + len(better70)
     print(time.time() - t0, "seconds wait time")
-    print("25 std dev: " + str(np.std(prec25)) + " mean: " + str(np.mean(prec25)))
-    print("50 std dev: " + str(np.std(prec50)) + " mean: " + str(np.mean(prec50)))
-    print("75 std dev: " + str(np.std(prec75)) + " mean: " + str(np.mean(prec75)))
-    print("90 std dev: " + str(np.std(prec90)) + " mean: " + str(np.mean(prec90)))
-    graphPrecisions(prec25, "25 percentile")
-    graphPrecisions(prec50, "50 percentile")
-    graphPrecisions(prec75, "75 percentile")
-    graphPrecisions(prec90, "90 percentile")
+    print('90: ' + str(above50['90']))
+    print('80: ' + str(above50['80']))
+    print('70: ' + str(above50['70']))
