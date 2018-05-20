@@ -1,6 +1,9 @@
-
 *.iml
 .DS_Store
 *.xml
 *.xlsm
 *.pyc
+*.csv
+djix.txt
+*.pdf
+*.jpg
