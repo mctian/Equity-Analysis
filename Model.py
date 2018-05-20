@@ -7,7 +7,7 @@ from sklearn import tree
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import AdaBoostClassifier
 
-
+# build a model using a single start and end index
 def build(modelType, startIndex, endIndex, target, features, featureLength, targetLength):
     df = pd.read_csv("Financials.csv", index_col = 0)
     stocks = df.index.tolist()
@@ -36,6 +36,7 @@ def build(modelType, startIndex, endIndex, target, features, featureLength, targ
     return dt
 
 
+# build a model with a list of start indexes
 def buildWithIndexes(modelType, indexes, target, features, featureLength, targetLength):
     df = pd.read_csv("Financials.csv", index_col = 0)
     stocks = df.index.tolist()
@@ -64,6 +65,7 @@ def buildWithIndexes(modelType, indexes, target, features, featureLength, target
     return dt
 
 
+# retrieve features for prediction, return added equities and vector of predictions
 def predict(model, startIndex, endIndex, features):
     df = pd.read_csv("Financials.csv", index_col = 0)
     stocks = df.index.tolist()
@@ -79,6 +81,7 @@ def predict(model, startIndex, endIndex, features):
     return addedStocks, model.predict(allFeatures)
 
 
+# retrieve features for prediction, return added equities and vector of predicted probabilities
 def predict_probabilities(model, startIndex, endIndex, features):
     df = pd.read_csv("Financials.csv", index_col = 0)
     stocks = df.index.tolist()
@@ -94,6 +97,7 @@ def predict_probabilities(model, startIndex, endIndex, features):
     return addedStocks, model.predict_proba(allFeatures)
 
 
+# takes vector of predictions, returns a list of predicted performing stocks
 def printPredictedPerformers(stocks, predictions):
     performers = []
     for i, stock in enumerate(stocks):
@@ -103,6 +107,7 @@ def printPredictedPerformers(stocks, predictions):
     return performers
 
 
+# splits data into test, train, and validation sets
 def splitData(max, targetLength, featureLength):
     trees = []
     indexes = np.arange(max * -1 -1 , -1 * (targetLength + featureLength), targetLength)
@@ -114,12 +119,14 @@ def splitData(max, targetLength, featureLength):
     return train, validate, test
 
 
+# graphs a histogram of precisions
 def graphPrecisions(precisionList, name):
     plt.hist(precisionList, bins='auto')
     plt.title(name)
     plt.show()
 
-# either use startIndex/endIndex or indexes, not both
+
+# retrieves feature data, either use startIndex/endIndex or indexes, not both
 def retrieveData(ticker, features, startIndex, endIndex, indexes):
     data = pd.read_csv(ticker+".csv", index_col = 0)
     if len(indexes) is not 0:
@@ -132,6 +139,7 @@ def retrieveData(ticker, features, startIndex, endIndex, indexes):
     return values
 
 
+# sklearn decision tree with set hyperparameters
 def decisionTreeClassifier(targetValues, featureValues):
     Y = np.vstack(targetValues)
     Y = Y.reshape(-1,1)
@@ -141,6 +149,7 @@ def decisionTreeClassifier(targetValues, featureValues):
     return clf
 
 
+# sklearn random forest with set hyperparameters
 def randomForestClassifier(targetValues, featureValues):
     Y = np.vstack(targetValues)
     Y = Y.reshape(-1,1)
@@ -151,6 +160,7 @@ def randomForestClassifier(targetValues, featureValues):
     return clf
 
 
+# sklearn adaboost with set hyperparameters
 def adaBoostClassifier(targetValues, featureValues):
     Y = np.vstack(targetValues)
     Y = Y.reshape(-1,1)
@@ -160,24 +170,28 @@ def adaBoostClassifier(targetValues, featureValues):
     return clf
 
 
+# sklearn accuracy (aka precision and recall)
 def accuracy(actual, predictions):
     from sklearn.metrics import accuracy_score
     score = accuracy_score(actual, predictions)
     return score
 
 
+# sklearn zero one loss
 def misclassifications(actual, predictions):
     from sklearn.metrics import zero_one_loss
     score = zero_one_loss(actual, predictions)
     return score
 
 
+# sklearn f1score
 def f1(actual, predictions):
     from sklearn.metrics import f1_score
     score = f1_score(actual, predictions)
     return score
 
 
+# sklearn precisions
 def precision(actual, predictions):
     from sklearn.metrics import precision_score
     score = precision_score(actual, predictions, pos_label = 1, average='binary')
