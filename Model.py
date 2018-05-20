@@ -318,5 +318,5 @@ if __name__ == "__main__":
     plt.plot(x75, y75, color = 'r', label = "75th percentile")
     plt.plot(x90, y90, color = 'k', label = "90th percentile")
     plt.legend()
-    fig.savefig('test.jpg')
+    fig.savefig(str(time.time()) + 'test.jpg')
     plt.show()
