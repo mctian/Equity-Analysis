@@ -294,8 +294,8 @@ if __name__ == "__main__":
         print(str(prob) + " above 50th percentile: " + str(precisions['above50'][prob]))
         print(str(prob) + " above 25th percentile: " + str(precisions['above25'][prob]))
         if (precisions['above90'][prob]) > 0:
-            x25.append(prob)
-            y25.append(precisions['above90'][prob])
+            x90.append(prob)
+            y90.append(precisions['above90'][prob])
         if (precisions['above75'][prob]) > 0:
             x75.append(prob)
             y75.append(precisions['above75'][prob])
