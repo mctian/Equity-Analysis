@@ -109,7 +109,6 @@ def printPredictedPerformers(stocks, predictions):
 
 # splits data into test, train, and validation sets
 def splitData(max, targetLength, featureLength):
-    trees = []
     indexes = np.arange(max * -1 -1 , -1 * (targetLength + featureLength), targetLength)
     np.random.shuffle(indexes)
     train, validate, test = np.split(indexes, [int(.6*len(indexes)), int(.8*len(indexes))])
@@ -119,10 +118,9 @@ def splitData(max, targetLength, featureLength):
     return train, validate, test
 
 
-# graphs a histogram of precisions
-def graphPrecisions(precisionList, name):
-    plt.hist(precisionList, bins='auto')
-    plt.title(name)
+# graphs a histogram
+def graphPrecisions(list):
+    plt.hist(list, bins='auto')
     plt.show()
 
 
@@ -154,8 +152,8 @@ def randomForestClassifier(targetValues, featureValues):
     Y = np.vstack(targetValues)
     Y = Y.reshape(-1,1)
     X = np.vstack(featureValues)
-    clf = RandomForestClassifier(n_estimators=120, max_depth=6, class_weight = "balanced", \
-        min_samples_leaf=4)
+    clf = RandomForestClassifier(n_estimators = 800, max_depth = 6, class_weight = "balanced", \
+        min_samples_leaf = 2)
     clf.fit(X,Y.flatten())
     return clf
 
@@ -301,11 +299,13 @@ if __name__ == "__main__":
     y75 = []
     y50 = []
     y25 = []
+    counts = []
     for prob in range(0,100,5):
         print(str(prob) + " above 90th percentile: " + str(precisions['above90'][prob]))
         print(str(prob) + " above 75th percentile: " + str(precisions['above75'][prob]))
         print(str(prob) + " above 50th percentile: " + str(precisions['above50'][prob]))
         print(str(prob) + " above 25th percentile: " + str(precisions['above25'][prob]))
+        counts.append(sum(betterThan[prob]))
         if (precisions['above90'][prob]) > 0:
             x90.append(prob)
             y90.append(precisions['above90'][prob])
@@ -327,10 +327,15 @@ if __name__ == "__main__":
     plt.title("Precisions")
     plt.xlabel('Predicted probability of being in class 90th percentile')
     plt.ylabel('Precision for the percentile of each line')
-    plt.plot(x25, y25, color = 'g', label = "25th percentile")
-    plt.plot(x50, y50, color = 'b', label = "50th percentile")
-    plt.plot(x75, y75, color = 'r', label = "75th percentile")
     plt.plot(x90, y90, color = 'k', label = "90th percentile")
+    plt.plot(x75, y75, color = 'r', label = "75th percentile")
+    plt.plot(x50, y50, color = 'b', label = "50th percentile")
+    plt.plot(x25, y25, color = 'g', label = "25th percentile")
     plt.legend()
+    plt.bar(x = list(range(0,100,5)), height = list(map(lambda x: x/max(counts),\
+        counts)), width = 5, color = 'c')
+    bar = axes.twinx()
+    bar.set_yticklabels(list(map(lambda x: x * max(counts), range(0,6,1))))
+    bar.set_ylabel('Counts', color = 'c')
     fig.savefig(str(time.time()) + 'test.jpg')
     plt.show()

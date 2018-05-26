@@ -170,6 +170,23 @@ def getTimeSeries(stock, worksheet, factor):
     data = pd.Series(values, index = dates, name = factor)
     return data
 
+def normalizeAll():
+    factors = ["EPS Growth", "Trailing EPS", "Total Debt to Total Equity", "Volatility 180 Day", "Return on Invested Capital", "Return on Common Equity", "Return on Assets", "Volatility 360 Day", "Earnings Momentum", "Price to Cash Flow", "Price to Book Ratio", "EPS", "Dividend Yield", "Forward PE", "Volume", "Last Price"]
+    filenames = list(map(lambda s: "USEquity(" + s + ").xlsm", factors))
+    t0 = time.time()
+
+    for i in range(0,len(factors)):
+        wb = load_workbook(filename = filesnames[i])
+        sheet = wb.sheetnames[1]
+        ws = wb[sheet]
+
+
+
+
+
+        print(time.time() - t0, "seconds wait time")
+        wb.close()
+    return
 
 if __name__ == "__main__":
     wb = load_workbook(filename = "USEquity(Sector).xlsm", data_only=True)
