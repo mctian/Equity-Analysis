@@ -1,14 +1,14 @@
 import requests
 import numpy as np
 import pandas as pd
-#import quandl
+import quandl
 import datetime
-#from datapackage import Package
+from datapackage import Package
 import holidays
-#from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-#from pdfminer.converter import TextConverter
-#from pdfminer.layout import LAParams
-#from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
+from pdfminer.pdfpage import PDFPage
 import math
 import io
 import csv
