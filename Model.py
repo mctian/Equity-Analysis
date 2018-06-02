@@ -94,7 +94,10 @@ def predict_probabilities(model, startIndex, endIndex, features):
 			averageValues = featureValues.mean(axis = 0)
 			allFeatures.append(averageValues)
 			addedStocks.append(stock)
-	return addedStocks, model.predict_proba(allFeatures)
+	X = np.vstack(allFeatures)
+	print(X)
+	print(len(X))
+	return addedStocks, model.predict_proba(X)
 
 
 # takes vector of predictions, returns a list of predicted performing stocks
@@ -131,7 +134,7 @@ def retrieveData(ticker, features, startIndex, endIndex, indexes):
 		values = data.loc[data.index[indexes], features]
 	else:
 		try:
-			values = data.loc[data.index[startIndex:endIndex], features]
+			values = data.loc[data.index[len(data) + startIndex:len(data) + endIndex + 1], features]
 		except KeyError:
 			return pd.DataFrame({'A' : []})
 	return values
@@ -226,8 +229,8 @@ def rateOfReturn(prices):
 	if len(prices) == 0:
 		return math.nan;
 	if type(prices) == list:
-		return (math.log1p(prices[-1]) - math.log1p(prices[0]))
-	return (math.log1p(prices.values[-1]) - math.log1p(prices.values[0]))
+		return (math.log(prices[-1]) - math.log(prices[0]))
+	return (math.log(prices.values[-1]) - math.log(prices.values[0]))
 
 
 # exports a graphic representation of a decision tree classifier
