@@ -66,15 +66,16 @@ def buildWithIndexes(modelType, indexes, target, features, featureLength, target
 
 
 # build a model with a list of start indexes that also classifiers underperformers
-def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLength, targetLength, sector, percentileTarget, percentileAvoid):
+def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLength, targetLength, sector, percentileTarget, percentileAvoid = 0, verbose = False):
 	df = pd.read_csv(sector + ".csv", index_col = 0)
 	stocks = df.index.tolist()
 	allFeatures = []
 	allTargets = []
 	count = 0
 	for i in indexes:
-		print("Index: " + str(i))
-		# print(str(count/len(indexes)*100) + " percent complete with preparing data.")
+		if verbose:
+			print("Index: " + str(i))
+			print(str(count/len(indexes)*100) + " percent complete with preparing data.")
 		count += 1
 		for j in range(i,i+targetLength):
 			currentTargets = []
@@ -185,8 +186,8 @@ def randomForestClassifier(targetValues, featureValues):
 	Y = np.vstack(targetValues)
 	Y = Y.reshape(-1,1)
 	X = np.vstack(featureValues)
-	clf = RandomForestClassifier(n_estimators = 10000, max_depth = 6, class_weight = "balanced", \
-		min_samples_leaf = 2)
+	clf = RandomForestClassifier(n_estimators = 1000, class_weight = "balanced", \
+		min_samples_leaf = 5)
 	clf.fit(X,Y.flatten())
 	return clf
 
