@@ -74,7 +74,7 @@ def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLen
 	count = 0
 	for i in indexes:
 		print("Index: " + str(i))
-		print(str(count/len(indexes)*100) + " percent complete with preparing data.")
+		# print(str(count/len(indexes)*100) + " percent complete with preparing data.")
 		count += 1
 		for j in range(i,i+targetLength):
 			currentTargets = []
@@ -91,6 +91,7 @@ def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLen
 					currentTargets.append(ror)
 			allTargets = allTargets + getPercentileTripleClass(currentTargets, percentileTarget, percentileAvoid)
 	dt = modelType(allTargets, allFeatures)
+	print("Finished fitting.")
 	return dt
 
 
