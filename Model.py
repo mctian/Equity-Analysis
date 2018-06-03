@@ -8,8 +8,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import AdaBoostClassifier
 
 # build a model using a single start and end index
-def build(modelType, startIndex, endIndex, target, features, featureLength, targetLength):
-	df = pd.read_csv("Financials.csv", index_col = 0)
+def build(modelType, startIndex, endIndex, target, features, featureLength, targetLength, sector, percentileTarget):
+	df = pd.read_csv(sector + ".csv", index_col = 0)
 	stocks = df.index.tolist()
 	allFeatures = []
 	allTargets = []
@@ -29,7 +29,7 @@ def build(modelType, startIndex, endIndex, target, features, featureLength, targ
 				averageValues = featureValues.mean(axis = 0)
 				allFeatures.append(averageValues)
 				currentTargets.append(ror)
-		allTargets = allTargets + getPercentile(currentTargets, 90)
+		allTargets = allTargets + getPercentile(currentTargets, percentileTarget)
 		currentIndex += 1
 	dt = modelType(allTargets, allFeatures)
 	#visualizeDecisionTreeClassifier(dt, str(startIndex) + ": Top 50")
@@ -37,8 +37,8 @@ def build(modelType, startIndex, endIndex, target, features, featureLength, targ
 
 
 # build a model with a list of start indexes
-def buildWithIndexes(modelType, indexes, target, features, featureLength, targetLength):
-	df = pd.read_csv("Financials.csv", index_col = 0)
+def buildWithIndexes(modelType, indexes, target, features, featureLength, targetLength, sector, percentileTarget):
+	df = pd.read_csv(sector + ".csv", index_col = 0)
 	stocks = df.index.tolist()
 	allFeatures = []
 	allTargets = []
@@ -60,14 +60,43 @@ def buildWithIndexes(modelType, indexes, target, features, featureLength, target
 					averageValues = featureValues.mean(axis = 0)
 					allFeatures.append(averageValues)
 					currentTargets.append(ror)
-			allTargets = allTargets + getPercentile(currentTargets, 90)
+			allTargets = allTargets + getPercentile(currentTargets, percentileTarget)
+	dt = modelType(allTargets, allFeatures)
+	return dt
+
+
+# build a model with a list of start indexes that also classifiers underperformers
+def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLength, targetLength, sector, percentileTarget, percentileAvoid):
+	df = pd.read_csv(sector + ".csv", index_col = 0)
+	stocks = df.index.tolist()
+	allFeatures = []
+	allTargets = []
+	count = 0
+	for i in indexes:
+		print("Index: " + str(i))
+		print(str(count/len(indexes)*100) + " percent complete with preparing data.")
+		count += 1
+		for j in range(i,i+targetLength):
+			currentTargets = []
+			for stock in stocks:
+				featureValues = retrieveData(stock, features, j, j + featureLength - 1, indexes = [])
+				if target == 'Rate of Return':
+					targetValues = retrieveData(stock, 'Last Price', j + featureLength, j + featureLength + targetLength - 1, indexes = [])
+				featureValues.dropna(axis = 0, how = 'any', inplace = True)
+				targetValues.dropna(axis = 0, how = 'any', inplace = True)
+				if featureValues.empty == False and targetValues.empty == False:
+					ror = rateOfReturn(targetValues)
+					averageValues = featureValues.mean(axis = 0)
+					allFeatures.append(averageValues)
+					currentTargets.append(ror)
+			allTargets = allTargets + getPercentileTripleClass(currentTargets, percentileTarget, percentileAvoid)
 	dt = modelType(allTargets, allFeatures)
 	return dt
 
 
 # retrieve features for prediction, return added equities and vector of predictions
-def predict(model, startIndex, endIndex, features):
-	df = pd.read_csv("Financials.csv", index_col = 0)
+def predict(model, startIndex, endIndex, features, sector):
+	df = pd.read_csv(sector + ".csv", index_col = 0)
 	stocks = df.index.tolist()
 	allFeatures = []
 	addedStocks = []
@@ -82,8 +111,8 @@ def predict(model, startIndex, endIndex, features):
 
 
 # retrieve features for prediction, return added equities and vector of predicted probabilities
-def predict_probabilities(model, startIndex, endIndex, features):
-	df = pd.read_csv("Financials.csv", index_col = 0)
+def predict_probabilities(model, startIndex, endIndex, features, sector):
+	df = pd.read_csv(sector + ".csv", index_col = 0)
 	stocks = df.index.tolist()
 	allFeatures = []
 	addedStocks = []
@@ -95,8 +124,8 @@ def predict_probabilities(model, startIndex, endIndex, features):
 			allFeatures.append(averageValues)
 			addedStocks.append(stock)
 	X = np.vstack(allFeatures)
-	print(X)
-	print(len(X))
+	#print(X)
+	#print(len(X))
 	return addedStocks, model.predict_proba(X)
 
 
@@ -155,7 +184,7 @@ def randomForestClassifier(targetValues, featureValues):
 	Y = np.vstack(targetValues)
 	Y = Y.reshape(-1,1)
 	X = np.vstack(featureValues)
-	clf = RandomForestClassifier(n_estimators = 800, max_depth = 6, class_weight = "balanced", \
+	clf = RandomForestClassifier(n_estimators = 10000, max_depth = 6, class_weight = "balanced", \
 		min_samples_leaf = 2)
 	clf.fit(X,Y.flatten())
 	return clf
@@ -210,6 +239,35 @@ def getPercentileTickers(tickers, values, percentile):
 			aboveCutoff.append(tickers[i])
 	return aboveCutoff
 
+# get tickers below a certain nanpercentile
+# returns a list of 0, 1 depending upon whether or not its index's ticker
+# is below percentile cutoff
+def getBelowPercentile(values, percentile):
+	cutoff = np.nanpercentile(values, percentile)
+	belowCutoff = []
+	for i, val in enumerate(values):
+		if val < cutoff:
+			belowCutoff.append(1)
+		else:
+			belowCutoff.append(0)
+	return belowCutoff
+
+
+# get tickers below a certain nanpercentile and above a certain nanpercentile
+# returns a list of 0, 1, 2
+def getPercentileTripleClass(values, abovePercentile, belowPercentile):
+	upperCutoff = np.nanpercentile(values, abovePercentile)
+	lowerCutoff = np.nanpercentile(values, belowPercentile)
+	labels = []
+	for i, val in enumerate(values):
+		if val < lowerCutoff:
+			labels.append(2)
+		elif val > upperCutoff:
+			labels.append(1)
+		else:
+			labels.append(0)
+	return labels
+
 
 # returns a list of 0, 1 depending upon whether or not its index's ticker
 # is in the top percentile
@@ -242,103 +300,8 @@ def visualizeDecisionTreeClassifier(dtree, name):
 	pass
 
 
+def countsBarGraph(counts):
+	return
+
 if __name__ == "__main__":
-	t0 = time.time()
-	featureList = ['Price to Book', 'Dividend Yield', 'Total Debt to Total Equity',
-		'Return on Invested Capital', 'Return on Common Equity']
-	train, validate, test = splitData(200,3,12)
-	tree = buildWithIndexes(modelType = randomForestClassifier, indexes = train, \
-		target= 'Rate of Return', features = featureList, featureLength = 12, targetLength = 3)
-	print("Labels: ")
-	print(tree.classes_)
-	print("Importances: ")
-	print(tree.feature_importances_)
-	#print("OOB Scores: ")
-	#print(tree.oob_score_)
-	precisions = {'seen':{},'above75':{}, 'above50':{}, 'above25':{}, 'above90':{}}
-	betterThan = {}
-	for prob in range(0,100,5):
-		precisions['seen'][prob] = 0
-		precisions['above75'][prob] = 0
-		precisions['above50'][prob] = 0
-		precisions['above25'][prob] = 0
-		precisions['above90'][prob] = 0
-	for i in validate:
-		addedStocks, probabilities = predict_probabilities(tree,
-			startIndex = i, endIndex = i+11, features = featureList)
-		actual = []
-		for prob in range(0,100,5):
-			betterThan[prob] = []
-		for stock in addedStocks:
-			actual.append(rateOfReturn(retrieveData(
-				stock, 'Last Price', i+12, i+14, [])))
-		for i in range(len(probabilities)):
-			for prob in range(0,100,5):
-				if probabilities[i][1] > prob / 100:
-					betterThan[prob].append(1)
-				else:
-					betterThan[prob].append(0)
-		for prob in range(0,100,5):
-			if sum(betterThan[prob]) > 0:
-				precisions['above75'][prob] = (precision(getPercentile(actual, 75),
-					betterThan[prob]) * len(betterThan[prob]) + precisions['above75'][prob] \
-					* precisions['seen'][prob]) / (precisions['seen'][prob] + len(betterThan[prob]))
-				precisions['above50'][prob] = (precision(getPercentile(actual, 50),
-					betterThan[prob]) * len(betterThan[prob]) + precisions['above50'][prob] \
-					* precisions['seen'][prob]) / (precisions['seen'][prob] + len(betterThan[prob]))
-				precisions['above25'][prob] = (precision(getPercentile(actual, 25),
-					betterThan[prob]) * len(betterThan[prob]) + precisions['above25'][prob] \
-					* precisions['seen'][prob]) / (precisions['seen'][prob] + len(betterThan[prob]))
-				precisions['above90'][prob] = (precision(getPercentile(actual, 90),
-					betterThan[prob]) * len(betterThan[prob]) + precisions['above90'][prob] \
-					* precisions['seen'][prob]) / (precisions['seen'][prob] + len(betterThan[prob]))
-				precisions['seen'][prob] = precisions['seen'][prob] + len(betterThan[prob])
-
-	x90 = []
-	y90 = []
-	x75 = []
-	x50 = []
-	x25 = []
-	y75 = []
-	y50 = []
-	y25 = []
-	counts = []
-	for prob in range(0,100,5):
-		print(str(prob) + " above 90th percentile: " + str(precisions['above90'][prob]))
-		print(str(prob) + " above 75th percentile: " + str(precisions['above75'][prob]))
-		print(str(prob) + " above 50th percentile: " + str(precisions['above50'][prob]))
-		print(str(prob) + " above 25th percentile: " + str(precisions['above25'][prob]))
-		counts.append(sum(betterThan[prob]))
-		if (precisions['above90'][prob]) > 0:
-			x90.append(prob)
-			y90.append(precisions['above90'][prob])
-		if (precisions['above75'][prob]) > 0:
-			x75.append(prob)
-			y75.append(precisions['above75'][prob])
-		if (precisions['above50'][prob]) > 0:
-			x50.append(prob)
-			y50.append(precisions['above50'][prob])
-		if (precisions['above25'][prob]) > 0:
-			x25.append(prob)
-			y25.append(precisions['above25'][prob])
-
-	print(time.time() - t0, "seconds wait time")
-	fig = plt.figure()
-	axes = plt.gca()
-	axes.set_xlim([0,100])
-	axes.invert_xaxis()
-	plt.title("Precisions")
-	plt.xlabel('Predicted probability of being in class 90th percentile')
-	plt.ylabel('Precision for the percentile of each line')
-	plt.plot(x90, y90, color = 'k', label = "90th percentile")
-	plt.plot(x75, y75, color = 'r', label = "75th percentile")
-	plt.plot(x50, y50, color = 'b', label = "50th percentile")
-	plt.plot(x25, y25, color = 'g', label = "25th percentile")
-	plt.legend()
-	plt.bar(x = list(range(0,100,5)), height = list(map(lambda x: x/max(counts),\
-		counts)), width = 5, color = 'c')
-	bar = axes.twinx()
-	bar.set_yticklabels(list(map(lambda x: x * max(counts), range(0,6,1))))
-	bar.set_ylabel('Counts', color = 'c')
-	fig.savefig(str(time.time()) + 'test.jpg')
-	plt.show()
+	pass

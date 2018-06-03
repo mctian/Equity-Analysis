@@ -1,6 +1,7 @@
 import datetime
 import Model
 import numpy as np
+from multiprocessing import Pool
 
 # positive numbers, start should be lower than end
 def rebalanceIndexes(startIndex, endIndex):
@@ -37,6 +38,7 @@ def getReturns(portfolio, startIndex, length):
 	return returns
 
 if __name__ == "__main__":
+    pool = Pool(os.cpu_count())
 	featureList = ['Price to Book', 'Dividend Yield', 'Total Debt to Total Equity',
 		'Return on Invested Capital', 'Return on Common Equity']
 	portfolios = list(map(lambda x: getPortfolio(x,200,3,12,featureList,0.6), rebalanceIndexes(1,12)))
