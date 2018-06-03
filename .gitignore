@@ -7,3 +7,8 @@
 djix.txt
 *.pdf
 *.jpg
+.ipynb_checkpoints/loadExcel-checkpoint.py
+.ipynb_checkpoints/Model-checkpoint.ipynb
+.ipynb_checkpoints/Model-checkpoint.py
+.ipynb_checkpoints/PortfolioTest-checkpoint.ipynb
+.ipynb_checkpoints/PortfolioTest-checkpoint.py
