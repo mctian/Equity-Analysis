@@ -303,12 +303,12 @@ def visualizeDecisionTreeClassifier(dtree, name):
 
 
 # approximate dates based on index hardcoded with Ford
-# @ index: index of the date, 0 for most recent, len(df) for first index
+# @ index: index of the date, 1 for most recent, len(df) for first index
 # @ return: datetime object representing the index
 def convertIndexToDate(index):
     df = pd.read_csv("F.csv", index_col = 0)
-    return df.index[len(data) - 1 * index]
-    
+    return df.index[len(df) - 1 * index]
+
 
 def countsBarGraph(counts):
 	return
