@@ -188,8 +188,8 @@ def randomForestClassifier(targetValues, featureValues):
 	Y = np.vstack(targetValues)
 	Y = Y.reshape(-1,1)
 	X = np.vstack(featureValues)
-	clf = RandomForestClassifier(n_estimators = 1000, class_weight = "balanced", \
-		min_samples_leaf = 5)
+	clf = RandomForestClassifier(n_estimators = 400, class_weight = "balanced", \
+		min_samples_leaf = 2)
 	clf.fit(X,Y.flatten())
 	return clf
 
