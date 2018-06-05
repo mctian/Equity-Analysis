@@ -6,6 +6,8 @@ import math
 from sklearn import tree
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import AdaBoostClassifier
+from os import system
+
 
 # build a model using a single start and end index
 def build(modelType, startIndex, endIndex, target, features, featureLength, targetLength, sector, percentileTarget):
@@ -294,12 +296,12 @@ def rateOfReturn(prices):
 
 
 # exports a graphic representation of a decision tree classifier
-def visualizeDecisionTreeClassifier(dtree, name):
+def visualizeDecisionTreeClassifier(dtree, name, featureList):
 	import graphviz
-	dot_data = tree.export_graphviz(dtree, out_file=name+'.dot')
-	graph = graphviz.Source(dot_data)
-	graph.render(name)
-	pass
+	dotfile = open("dtree" + name + ".dot", 'w')
+	tree.export_graphviz(dtree, out_file = dotfile, feature_names = featureList)
+	dotfile.close()
+	return
 
 
 # approximate dates based on index hardcoded with Ford
