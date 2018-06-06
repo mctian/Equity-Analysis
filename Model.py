@@ -63,6 +63,7 @@ def buildWithIndexes(modelType, indexes, target, features, featureLength, target
 					allFeatures.append(averageValues)
 					currentTargets.append(ror)
 			allTargets = allTargets + getPercentile(currentTargets, percentileTarget)
+	print("Finished data retrieval, starting model training.")
 	dt = modelType(allTargets, allFeatures)
 	return dt
 
@@ -93,6 +94,7 @@ def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLen
 					allFeatures.append(averageValues)
 					currentTargets.append(ror)
 			allTargets = allTargets + getPercentileTripleClass(currentTargets, percentileTarget, percentileAvoid)
+	print("Finished data retrieval, starting model training.")
 	dt = modelType(allTargets, allFeatures)
 	print("Finished fitting.")
 	return dt
@@ -305,11 +307,11 @@ def visualizeDecisionTreeClassifier(dtree, name, featureList):
 
 
 # approximate dates based on index hardcoded with Ford
-# @ index: index of the date, 1 for most recent, len(df) for first index
+# @ index: index of the date, -1 for most recent, 0 for first index
 # @ return: datetime object representing the index
 def convertIndexToDate(index):
     df = pd.read_csv("F.csv", index_col = 0)
-    return df.index[len(df) - 1 * index]
+    return df.index[len(df) + index]
 
 
 def countsBarGraph(counts):
