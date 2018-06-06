@@ -6,7 +6,8 @@ import math
 from sklearn import tree
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import AdaBoostClassifier
-from os import system
+import os
+from multiprocessing import Pool
 
 
 # build a model using a single start and end index
@@ -72,32 +73,52 @@ def buildWithIndexes(modelType, indexes, target, features, featureLength, target
 def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLength, targetLength, sector, percentileTarget, percentileAvoid = 0, verbose = False):
 	df = pd.read_csv(sector + ".csv", index_col = 0)
 	stocks = df.index.tolist()
-	allFeatures = []
-	allTargets = []
-	count = 0
+	params = [targetLength, featureLength, stocks, percentileAvoid, percentileTarget, features, target]
+	paramList = []
 	for i in indexes:
-		if verbose:
-			print("Index: " + str(i))
-			print(str(count/len(indexes)*100) + " percent complete with preparing data.")
-		count += 1
-		for j in range(i,i+targetLength):
-			currentTargets = []
-			for stock in stocks:
-				featureValues = retrieveData(stock, features, j, j + featureLength - 1, indexes = [])
-				if target == 'Rate of Return':
-					targetValues = retrieveData(stock, 'Last Price', j + featureLength, j + featureLength + targetLength - 1, indexes = [])
-				featureValues.dropna(axis = 0, how = 'any', inplace = True)
-				targetValues.dropna(axis = 0, how = 'any', inplace = True)
-				if featureValues.empty == False and targetValues.empty == False:
-					ror = rateOfReturn(targetValues)
-					averageValues = featureValues.mean(axis = 0)
-					allFeatures.append(averageValues)
-					currentTargets.append(ror)
-			allTargets = allTargets + getPercentileTripleClass(currentTargets, percentileTarget, percentileAvoid)
+		temp = [i] + (params)
+		paramList.append(temp)
+	pool = Pool(os.cpu_count())
+	temp = pool.map(poolRetrieve, paramList)
+	allTargets = []
+	allFeatures = []
+	for item in temp:
+		itemTargets, itemFeatures = zip(*item)
+		allTargets.extend(itemTargets)
+		allFeatures.extend(itemFeatures)
 	print("Finished data retrieval, starting model training.")
 	dt = modelType(allTargets, allFeatures)
 	print("Finished fitting.")
 	return dt
+
+
+# multiprocess function
+def poolRetrieve(inputList):
+	i = inputList[0]
+	targetLength = inputList[1]
+	featureLength = inputList[2]
+	stocks = inputList[3]
+	percentileAvoid = inputList[4]
+	percentileTarget = inputList[5]
+	features = inputList[6]
+	target = inputList[7]
+	allFeatures = []
+	allTargets = []
+	for j in range(i,i+targetLength):
+		currentTargets = []
+		for stock in stocks:
+			featureValues = retrieveData(stock, features, j, j + featureLength - 1, indexes = [])
+			if target == 'Rate of Return':
+				targetValues = retrieveData(stock, 'Last Price', j + featureLength, j + featureLength + targetLength - 1, indexes = [])
+			featureValues.dropna(axis = 0, how = 'any', inplace = True)
+			targetValues.dropna(axis = 0, how = 'any', inplace = True)
+			if featureValues.empty == False and targetValues.empty == False:
+				ror = rateOfReturn(targetValues)
+				averageValues = featureValues.mean(axis = 0)
+				allFeatures.append(averageValues)
+				currentTargets.append(ror)
+		allTargets = allTargets + getPercentileTripleClass(currentTargets, percentileTarget, percentileAvoid)
+	return zip(allTargets, allFeatures)
 
 
 # retrieve features for prediction, return added equities and vector of predictions
@@ -190,8 +211,8 @@ def randomForestClassifier(targetValues, featureValues):
 	Y = np.vstack(targetValues)
 	Y = Y.reshape(-1,1)
 	X = np.vstack(featureValues)
-	clf = RandomForestClassifier(n_estimators = 400, class_weight = "balanced", \
-		min_samples_leaf = 2)
+	clf = RandomForestClassifier(n_estimators = 2500, class_weight = "balanced", \
+		min_samples_leaf = 1, n_jobs = -1)
 	clf.fit(X,Y.flatten())
 	return clf
 
