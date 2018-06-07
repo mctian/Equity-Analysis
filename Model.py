@@ -91,6 +91,7 @@ def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLen
 		allFeatures.extend(itemFeatures)
 	if verbose:
 		print("Finished data retrieval, starting model training. Time taken: " + str(time.time() - t) + " seconds.")
+		t = time.time()
 	dt = modelType(allTargets, allFeatures)
 	if verbose:
 		print("Finished fitting. Time taken: " + str(time.time() - t) + " seconds.")
@@ -326,9 +327,10 @@ def rateOfReturn(prices):
 # exports a graphic representation of a decision tree classifier
 def visualizeDecisionTreeClassifier(dtree, name, featureList):
 	import graphviz
-	dotfile = open("dtree" + name + ".dot", 'w')
-	tree.export_graphviz(dtree, out_file = dotfile, feature_names = featureList)
-	dotfile.close()
+	dot_data = tree.export_graphviz(dtree, out_file = None, feature_names = featureList, max_depth = 7)
+	graph = graphviz.Source(dot_data)
+	graph.format = 'png'
+	graph.render(name)
 	return
 
 
