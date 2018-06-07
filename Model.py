@@ -6,7 +6,8 @@ import math
 from sklearn import tree
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import AdaBoostClassifier
-from os import system
+import os
+from multiprocessing import Pool
 
 
 # build a model using a single start and end index
@@ -69,35 +70,61 @@ def buildWithIndexes(modelType, indexes, target, features, featureLength, target
 
 
 # build a model with a list of start indexes that also classifiers underperformers
-def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLength, targetLength, sector, percentileTarget, percentileAvoid = 0, verbose = False):
+def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLength, \
+								targetLength, sector, percentileTarget, \
+								percentileAvoid = 0, verbose = True):
+	t = time.time()
 	df = pd.read_csv(sector + ".csv", index_col = 0)
 	stocks = df.index.tolist()
+	params = [targetLength, featureLength, stocks, percentileAvoid, percentileTarget, features, target]
+	paramList = []
+	for i in indexes:
+		temp = [i] + (params)
+		paramList.append(temp)
+	pool = Pool(os.cpu_count())
+	temp = pool.map(poolRetrieve, paramList)
+	allTargets = []
+	allFeatures = []
+	for item in temp:
+		itemTargets, itemFeatures = zip(*item)
+		allTargets.extend(itemTargets)
+		allFeatures.extend(itemFeatures)
+	if verbose:
+		print("Finished data retrieval, starting model training. Time taken: " + str(time.time() - t) + " seconds.")
+		t = time.time()
+	dt = modelType(allTargets, allFeatures)
+	if verbose:
+		print("Finished fitting. Time taken: " + str(time.time() - t) + " seconds.")
+	return dt
+
+
+# multiprocess function
+def poolRetrieve(inputList):
+	i = inputList[0]
+	targetLength = inputList[1]
+	featureLength = inputList[2]
+	stocks = inputList[3]
+	percentileAvoid = inputList[4]
+	percentileTarget = inputList[5]
+	features = inputList[6]
+	target = inputList[7]
 	allFeatures = []
 	allTargets = []
-	count = 0
-	for i in indexes:
-		if verbose:
-			print("Index: " + str(i))
-			print(str(count/len(indexes)*100) + " percent complete with preparing data.")
-		count += 1
-		for j in range(i,i+targetLength):
-			currentTargets = []
-			for stock in stocks:
-				featureValues = retrieveData(stock, features, j, j + featureLength - 1, indexes = [])
-				if target == 'Rate of Return':
-					targetValues = retrieveData(stock, 'Last Price', j + featureLength, j + featureLength + targetLength - 1, indexes = [])
-				featureValues.dropna(axis = 0, how = 'any', inplace = True)
-				targetValues.dropna(axis = 0, how = 'any', inplace = True)
-				if featureValues.empty == False and targetValues.empty == False:
-					ror = rateOfReturn(targetValues)
-					averageValues = featureValues.mean(axis = 0)
-					allFeatures.append(averageValues)
-					currentTargets.append(ror)
-			allTargets = allTargets + getPercentileTripleClass(currentTargets, percentileTarget, percentileAvoid)
-	print("Finished data retrieval, starting model training.")
-	dt = modelType(allTargets, allFeatures)
-	print("Finished fitting.")
-	return dt
+	for j in range(i,i+targetLength):
+		currentTargets = []
+		for stock in stocks:
+			featureValues = retrieveData(stock, features, j, j + featureLength - 1, indexes = [])
+			if target == 'Rate of Return':
+				targetValues = retrieveData(stock, 'Last Price', j + featureLength, j + featureLength + targetLength - 1, indexes = [])
+			featureValues.dropna(axis = 0, how = 'any', inplace = True)
+			targetValues.dropna(axis = 0, how = 'any', inplace = True)
+			if featureValues.empty == False and targetValues.empty == False:
+				ror = rateOfReturn(targetValues)
+				averageValues = featureValues.mean(axis = 0)
+				allFeatures.append(averageValues)
+				currentTargets.append(ror)
+		allTargets = allTargets + getPercentileTripleClass(currentTargets, percentileTarget, percentileAvoid)
+	return zip(allTargets, allFeatures)
 
 
 # retrieve features for prediction, return added equities and vector of predictions
@@ -190,8 +217,8 @@ def randomForestClassifier(targetValues, featureValues):
 	Y = np.vstack(targetValues)
 	Y = Y.reshape(-1,1)
 	X = np.vstack(featureValues)
-	clf = RandomForestClassifier(n_estimators = 400, class_weight = "balanced", \
-		min_samples_leaf = 2)
+	clf = RandomForestClassifier(n_estimators = 1000, class_weight = "balanced", \
+		min_samples_leaf = 1, n_jobs = -1)
 	clf.fit(X,Y.flatten())
 	return clf
 
@@ -300,9 +327,10 @@ def rateOfReturn(prices):
 # exports a graphic representation of a decision tree classifier
 def visualizeDecisionTreeClassifier(dtree, name, featureList):
 	import graphviz
-	dotfile = open("dtree" + name + ".dot", 'w')
-	tree.export_graphviz(dtree, out_file = dotfile, feature_names = featureList)
-	dotfile.close()
+	dot_data = tree.export_graphviz(dtree, out_file = None, feature_names = featureList, max_depth = 7)
+	graph = graphviz.Source(dot_data)
+	graph.format = 'png'
+	graph.render(name)
 	return
 
 
