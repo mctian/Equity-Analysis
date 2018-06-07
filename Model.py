@@ -71,6 +71,7 @@ def buildWithIndexes(modelType, indexes, target, features, featureLength, target
 
 # build a model with a list of start indexes that also classifiers underperformers
 def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLength, targetLength, sector, percentileTarget, percentileAvoid = 0, verbose = False):
+	t = time.time()
 	df = pd.read_csv(sector + ".csv", index_col = 0)
 	stocks = df.index.tolist()
 	params = [targetLength, featureLength, stocks, percentileAvoid, percentileTarget, features, target]
@@ -86,9 +87,9 @@ def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLen
 		itemTargets, itemFeatures = zip(*item)
 		allTargets.extend(itemTargets)
 		allFeatures.extend(itemFeatures)
-	print("Finished data retrieval, starting model training.")
+	print("Finished data retrieval, starting model training. Time taken: " + str(time.time() - t) + " seconds.")
 	dt = modelType(allTargets, allFeatures)
-	print("Finished fitting.")
+	print("Finished fitting. Time taken: " + str(time.time() - t) + " seconds.")
 	return dt
 
 
