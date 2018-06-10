@@ -89,6 +89,8 @@ def buildWithIndexesTripleClass(modelType, indexes, target, features, featureLen
 		itemTargets, itemFeatures = zip(*item)
 		allTargets.extend(itemTargets)
 		allFeatures.extend(itemFeatures)
+	pool = None
+	temp = None
 	if verbose:
 		print("Finished data retrieval, starting model training. Time taken: " + str(time.time() - t) + " seconds.")
 		t = time.time()
