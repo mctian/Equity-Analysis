@@ -87,6 +87,17 @@ def mergeCloseIndexes(tickers, days):
 	return
 
 
+def insertIndexHeaders(tickers):
+    for ticker in tickers:
+        df = pd.read_csv(ticker+".csv", index_col = 0)
+        df.index.name = 'Date'
+        f = open(ticker+".csv", "w+")
+        f.close()
+        df.to_csv(ticker+".csv")
+    return
+
+
+
 # outputs all time series to csv files
 def getAllTimeSeries(worksheet, factor):
 	indexes = getValidTickerIndexes(worksheet)
@@ -189,6 +200,9 @@ def normalizeAll():
 	return
 
 if __name__ == "__main__":
-	wb = load_workbook(filename = "USEquity(Sector).xlsm", data_only=True)
-	ws = wb["Sector"]
-	getAllTickersBySector(ws)
+    df = pd.read_csv("stocklist.csv",index_col = 0)
+    stocks = set(df.index.tolist())
+    insertIndexHeaders(stocks)
+    #wb = load_workbook(filename = "USEquity(Sector).xlsm", data_only=True)
+    #ws = wb["Sector"]
+    #getAllTickersBySector(ws)
