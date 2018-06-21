@@ -4,9 +4,6 @@ import time
 
 
 if __name__ == '__main__':
-    user = input("Enter database username: ")
-    password = input("Enter database password for " + user + ": ")
-    ticker =  input("Enter ticker: ")
     client = MongoClient('localhost', 27017)
     db = client.stocklists
     db2 = client.stocks
@@ -21,7 +18,3 @@ if __name__ == '__main__':
     print(time.time() - t)
     t = time.time()
 
-    tickers = pd.read_csv('stocklist.csv')['Tickers']
-    for ticker in tickers:
-        a = pd.read_csv(ticker+".csv")
-    print(time.time() - t)
