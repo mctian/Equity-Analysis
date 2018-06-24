@@ -60,22 +60,65 @@ def initDateIndexesForDateList():
     return
 
 
-def getData(start, end = '2018-01-31', sector = 'stocklist', fields = 'All'):
+def getDataAnom(start, end = '2018-01-31', sector = 'stocklist', fields = 'All'):
     if fields == 'All':
-        fields = ['EPS Growth', 'Volatility 180 D', 'Trailing EPS', 'Price to Cash Flow', 'EPS', 'Volume', 'Return on Assets', 'Price to Book', 'Dividend Yield', 'Total Debt to Total Equity', 'Return on Invested Capital', 'Return on Common Equity']
-        proj = fields
-        #proj = list(zip(fields, itertools.repeat(True)))
-        #print(proj)
+        fields = ['Date', 'EPS Growth', 'Volatility 180 D', 'Trailing EPS', 'Price to Cash Flow', 'EPS', 'Volume', 'Return on Assets', 'Price to Book', 'Dividend Yield', 'Total Debt to Total Equity', 'Return on Invested Capital', 'Return on Common Equity']
+        proj = dict()
+        proj["_id"] = False
+        for field in fields:
+            proj[field] = True
     client = pymongo.MongoClient('localhost', 27017, maxPoolSize=100)
     db = client.stocklists
     db2 = client.stocks
     stocks = pd.DataFrame(list(db[sector].find()))['Tickers'].values
+    
+    dataDict = {}
+    for field in fields:
+        dataDict[field] = np.array([], dtype = np.float)
+
+    for stock in stocks:
+        df = pd.DataFrame(list(db2[stock].find(filter = {'$and':[{'Date': {'$gte':start}}, {'Date': {'$lte':end}}]}, projection = proj)))
+        for feature in fields:
+            try:
+                if feature != 'Date':
+                    arr = np.array(df[feature].values, dtype = np.float64)
+                else:
+                    arr = np.array(df[feature].values)
+                dataDict[feature] = np.append(dataDict[feature], arr)
+            except KeyError:
+                try:
+                    arr = np.array(list(itertools.repeat(np.nan, len(df['Date'].values))))
+                    dataDict[feature] = np.append(dataDict[feature], arr)
+                except:
+                    pass
+
+    return dataDict
+
+
+# input start to end must be separated by a multiple of 3 months
+def getQuarterlyData(start, end = '2018-01-31', sector = 'stocklist', fields = 'All'):
+    if fields == 'All':
+        fields = ['EPS Growth', 'Volatility 180 D', 'Trailing EPS', 'Price to Cash Flow', 'EPS', 'Volume', 'Return on Assets', 'Price to Book', 'Dividend Yield', 'Total Debt to Total Equity', 'Return on Invested Capital', 'Return on Common Equity']
+        proj = dict()
+        proj["_id"] = False
+        for field in fields:
+            proj[field] = True
+    client = pymongo.MongoClient('localhost', 27017, maxPoolSize=100)
+    db = client.stocklists
+    db2 = client.stocks
+    stocks = pd.DataFrame(list(db[sector].find()))['Tickers'].values
+
     datalist = []
     for stock in stocks:
         data = db2[stock].find(filter = {'$and':[{'Date': {'$gte':start}}, {'Date': {'$lte':end}}]}, projection = proj)
+        try:
+            df = pd.DataFrame(list(data))
+        except:
+            print('Error. Not divisible into 3 month periods')
         datalist.append(pd.DataFrame(list(data)))
     print(datalist)
     return datalist
+
 
 
 
@@ -111,5 +154,5 @@ def test():
  
 
 if __name__ == '__main__':
-    getData('2017-1-1', sector = 'TelecommunicationServices')
+    getDataAnom('2017-1-1', sector = 'Materials')
     
