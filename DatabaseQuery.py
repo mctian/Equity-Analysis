@@ -7,6 +7,27 @@ import json
 import itertools
 
 
+def getValidFields():
+    client = pymongo.MongoClient('localhost', 27017, maxPoolSize=100)
+    db = client.stocklists
+    fields = db['Fields'].find(projection = {'_id': False})
+    print(pd.DataFrame(list(fields))['Field'].values)
+    return fields
+
+
+# Do NOT RUN IF 'Fields' ALREADY EXISTS
+def initValidFields():
+    client = pymongo.MongoClient('localhost', 27017, maxPoolSize=100)
+    db = client.stocklists
+    db2 = client.stocks
+    fieldCollection = db['Fields']
+    fields = pd.DataFrame(list(db2['A'].find(projection = {'_id':False}, sort = [('Date', -1)], limit = 1))).columns.values
+    for field in fields:
+        fieldDoc = {'Field': field}
+        fieldCollection.insert_one(fieldDoc)
+    return
+
+
 def getValidDateIndexes():
     client = pymongo.MongoClient('localhost', 27017, maxPoolSize=100)
     db = client.stocklists
@@ -25,7 +46,6 @@ def initValidDates():
     dateCollection = db['Dates']
     for date in pd.DataFrame(list(cursor))['Date']:
         dateDoc = {'Date': date}
-        print(dateDoc)
         dateCollection.insert_one(dateDoc)
     return
 
@@ -161,8 +181,4 @@ def test():
 
 
 if __name__ == '__main__':
-    dict = getDataAnomQuarterly('2016-10-1', sector = 'Materials')
-    featureList = ['Date', 'EPS Growth', 'Volatility 180 D', 'Trailing EPS', 'Price to Cash Flow', 'EPS', 'Volume', 'Return on Assets', 'Price to Book', 'Dividend Yield', 'Total Debt to Total Equity', 'Return on Invested Capital', 'Return on Common Equity']
-    for feature in featureList:
-        featureData = dict[feature]
-        print(*featureData.shape)
+    getValidFields()
