@@ -63,7 +63,7 @@ def initDateIndexesForDateList():
 def getDataAnom(start, end = '2018-01-31', sector = 'stocklist', fields = 'All'):
     if fields == 'All':
         fields = ['Date', 'EPS Growth', 'Volatility 180 D', 'Trailing EPS', 'Price to Cash Flow', 'EPS', 'Volume', 'Return on Assets', 'Price to Book', 'Dividend Yield', 'Total Debt to Total Equity', 'Return on Invested Capital', 'Return on Common Equity']
-        proj = dict()
+        proj = {}
         proj["_id"] = False
         for field in fields:
             proj[field] = True
@@ -74,7 +74,7 @@ def getDataAnom(start, end = '2018-01-31', sector = 'stocklist', fields = 'All')
     
     dataDict = {}
     for field in fields:
-        dataDict[field] = np.array([], dtype = np.float)
+        dataDict[field] = np.array([], dtype = np.float64)
 
     for stock in stocks:
         df = pd.DataFrame(list(db2[stock].find(filter = {'$and':[{'Date': {'$gte':start}}, {'Date': {'$lte':end}}]}, projection = proj)))
@@ -87,18 +87,19 @@ def getDataAnom(start, end = '2018-01-31', sector = 'stocklist', fields = 'All')
                 dataDict[feature] = np.append(dataDict[feature], arr)
             except KeyError:
                 try:
-                    arr = np.array(list(itertools.repeat(np.nan, len(df['Date'].values))))
+                    arr = np.array(list(itertools.repeat(np.nan, df.shape[0])))
                     dataDict[feature] = np.append(dataDict[feature], arr)
                 except:
                     pass
+            except ValueError:
+                pass
 
     return dataDict
 
 
-# input start to end must be separated by a multiple of 3 months
-def getQuarterlyData(start, end = '2018-01-31', sector = 'stocklist', fields = 'All'):
+def getDataAnomQuarterly(start, end = '2018-01-31', sector = 'stocklist', fields = 'All'):
     if fields == 'All':
-        fields = ['EPS Growth', 'Volatility 180 D', 'Trailing EPS', 'Price to Cash Flow', 'EPS', 'Volume', 'Return on Assets', 'Price to Book', 'Dividend Yield', 'Total Debt to Total Equity', 'Return on Invested Capital', 'Return on Common Equity']
+        fields = ['Date', 'EPS Growth', 'Volatility 180 D', 'Trailing EPS', 'Price to Cash Flow', 'EPS', 'Volume', 'Return on Assets', 'Price to Book', 'Dividend Yield', 'Total Debt to Total Equity', 'Return on Invested Capital', 'Return on Common Equity']
         proj = dict()
         proj["_id"] = False
         for field in fields:
@@ -107,19 +108,30 @@ def getQuarterlyData(start, end = '2018-01-31', sector = 'stocklist', fields = '
     db = client.stocklists
     db2 = client.stocks
     stocks = pd.DataFrame(list(db[sector].find()))['Tickers'].values
-
-    datalist = []
+    
+    dataDict = {}
+    for field in fields:
+        dataDict[field] = np.array([], dtype = np.float64)
     for stock in stocks:
-        data = db2[stock].find(filter = {'$and':[{'Date': {'$gte':start}}, {'Date': {'$lte':end}}]}, projection = proj)
-        try:
-            df = pd.DataFrame(list(data))
-        except:
-            print('Error. Not divisible into 3 month periods')
-        datalist.append(pd.DataFrame(list(data)))
-    print(datalist)
-    return datalist
-
-
+        df = pd.DataFrame(list(db2[stock].find(filter = {'$and':[{'Date': {'$gte':start}}, {'Date': {'$lte':end}}]}, projection = proj)))
+        numrows = df.shape[0] - df.shape[0] % 3
+        if numrows == 0:
+            continue
+        for feature in fields:
+            try:
+                if feature != 'Date':
+                    arr = np.array(df[feature].values, dtype = np.float64)[0:numrows].reshape(3,-1)
+                    arr = np.nanmean(arr, axis = 0)
+                else:
+                    arr = np.array(df[feature].values)[0:numrows:3]
+                dataDict[feature] = np.append(dataDict[feature], arr)
+            except KeyError:
+                arr = np.array(list(itertools.repeat(np.nan, int(numrows/3))))
+                dataDict[feature] = np.append(dataDict[feature], arr)
+            except ValueError:
+                print('Warning: ValueError')
+                pass
+    return dataDict
 
 
 def test():
@@ -144,15 +156,13 @@ def test():
         else:
             count += 1
         for feature in featureList:
-            try:
-                stockfeature = stockdata[feature].dropna().values
-                if feature == "EPS Growth":
-                    epsgrowth.extend(stockfeature)
-            except:
-                pass
+            pass
     return
- 
+
 
 if __name__ == '__main__':
-    getDataAnom('2017-1-1', sector = 'Materials')
-    
+    dict = getDataAnomQuarterly('2016-10-1', sector = 'Materials')
+    featureList = ['Date', 'EPS Growth', 'Volatility 180 D', 'Trailing EPS', 'Price to Cash Flow', 'EPS', 'Volume', 'Return on Assets', 'Price to Book', 'Dividend Yield', 'Total Debt to Total Equity', 'Return on Invested Capital', 'Return on Common Equity']
+    for feature in featureList:
+        featureData = dict[feature]
+        print(*featureData.shape)
