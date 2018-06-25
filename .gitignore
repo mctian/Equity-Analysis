@@ -15,3 +15,5 @@ Finished Tests/output_26_2.png
 *.png
 Equity-Analysis/
 *.dot
+*.d
+*.o

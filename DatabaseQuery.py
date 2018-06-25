@@ -7,11 +7,13 @@ import json
 import itertools
 
 
-def getValidFields():
+def getValidFields(includePrice = True):
     client = pymongo.MongoClient('localhost', 27017, maxPoolSize=100)
     db = client.stocklists
     fields = db['Fields'].find(projection = {'_id': False})
-    print(pd.DataFrame(list(fields))['Field'].values)
+    fields = list(pd.DataFrame(list(fields))['Field'].values)
+    if not includePrice:
+        fields.remove('Last Price')
     return fields
 
 
@@ -32,7 +34,6 @@ def getValidDateIndexes():
     client = pymongo.MongoClient('localhost', 27017, maxPoolSize=100)
     db = client.stocklists
     indexes = db['Dates'].index_information()
-    print(indexes)
     return indexes
 
 
@@ -80,67 +81,90 @@ def initDateIndexesForDateList():
     return
 
 
-def getDataAnom(start, end = '2018-01-31', sector = 'stocklist', fields = 'All'):
-    if fields == 'All':
-        fields = ['Date', 'EPS Growth', 'Volatility 180 D', 'Trailing EPS', 'Price to Cash Flow', 'EPS', 'Volume', 'Return on Assets', 'Price to Book', 'Dividend Yield', 'Total Debt to Total Equity', 'Return on Invested Capital', 'Return on Common Equity']
-        proj = {}
-        proj["_id"] = False
-        for field in fields:
-            proj[field] = True
+def getDataAnom(start, end = '2018-01-31', sector = 'stocklist', fields = 'All', includePrice = False, periodLimit = 0):
     client = pymongo.MongoClient('localhost', 27017, maxPoolSize=100)
     db = client.stocklists
     db2 = client.stocks
     stocks = pd.DataFrame(list(db[sector].find()))['Tickers'].values
+
+    if fields == 'All':
+        fields = getValidFields(includePrice)
+
+    proj = {} 
+    proj["_id"] = False
+    for field in fields:
+        proj[field] = True
     
     dataDict = {}
-    for field in fields:
-        dataDict[field] = np.array([], dtype = np.float64)
 
-    for stock in stocks:
-        df = pd.DataFrame(list(db2[stock].find(filter = {'$and':[{'Date': {'$gte':start}}, {'Date': {'$lte':end}}]}, projection = proj)))
-        for feature in fields:
-            try:
-                if feature != 'Date':
-                    arr = np.array(df[feature].values, dtype = np.float64)
-                else:
-                    arr = np.array(df[feature].values)
-                dataDict[feature] = np.append(dataDict[feature], arr)
-            except KeyError:
+    total = 0
+
+    for field in fields:
+        dataDict[field] = np.array([], dtype = np.float32)
+
+        for stock in stocks:
+            df = pd.DataFrame(list(db2[stock].find(filter = {'$and':[{'Date': {'$gte':start}}, {'Date': {'$lte':end}}]}, projection = proj)))
+            if periodLimit > 0:
+                numrows = df.shape[0] - df.shape[0] % periodLimit 
+            else:
+                numrows = df.shape[0]
+        
+            total += numrows
+        
+            if numrows == 0:
+                continue
+            for feature in fields:
                 try:
-                    arr = np.array(list(itertools.repeat(np.nan, df.shape[0])))
+                    if feature != 'Date':
+                        arr = np.array(df[feature].values, dtype = np.float32)[0:numrows]
+                    else:
+                        arr = np.array(df[feature].values)[0:numrows]
                     dataDict[feature] = np.append(dataDict[feature], arr)
-                except:
+                except KeyError:
+                    arr = np.array(list(itertools.repeat(np.nan, numrows)))
+                    dataDict[feature] = np.append(dataDict[feature], arr)
+                except ValueError:
+                    print('Warning: ValueError')
                     pass
-            except ValueError:
-                pass
+
+    print(total)
 
     return dataDict
 
 
-def getDataAnomQuarterly(start, end = '2018-01-31', sector = 'stocklist', fields = 'All'):
-    if fields == 'All':
-        fields = ['Date', 'EPS Growth', 'Volatility 180 D', 'Trailing EPS', 'Price to Cash Flow', 'EPS', 'Volume', 'Return on Assets', 'Price to Book', 'Dividend Yield', 'Total Debt to Total Equity', 'Return on Invested Capital', 'Return on Common Equity']
-        proj = dict()
-        proj["_id"] = False
-        for field in fields:
-            proj[field] = True
+def getDataAnomQuarterly(start, end = '2018-01-31', sector = 'stocklist', fields = 'All', includePrice = False):
     client = pymongo.MongoClient('localhost', 27017, maxPoolSize=100)
     db = client.stocklists
     db2 = client.stocks
     stocks = pd.DataFrame(list(db[sector].find()))['Tickers'].values
+
+    if fields == 'All':
+        fields = getValidFields(includePrice)
+    
+    proj = {}
+    proj["_id"] = False
+    for field in fields:
+        proj[field] = True
     
     dataDict = {}
+
     for field in fields:
-        dataDict[field] = np.array([], dtype = np.float64)
+        dataDict[field] = np.array([], dtype = np.float32)
+
+    total = 0
+
     for stock in stocks:
         df = pd.DataFrame(list(db2[stock].find(filter = {'$and':[{'Date': {'$gte':start}}, {'Date': {'$lte':end}}]}, projection = proj)))
         numrows = df.shape[0] - df.shape[0] % 3
+        
+        total += numrows
+        
         if numrows == 0:
             continue
         for feature in fields:
             try:
                 if feature != 'Date':
-                    arr = np.array(df[feature].values, dtype = np.float64)[0:numrows].reshape(3,-1)
+                    arr = np.array(df[feature].values, dtype = np.float32)[0:numrows].reshape(3,-1)
                     arr = np.nanmean(arr, axis = 0)
                 else:
                     arr = np.array(df[feature].values)[0:numrows:3]
@@ -151,34 +175,75 @@ def getDataAnomQuarterly(start, end = '2018-01-31', sector = 'stocklist', fields
             except ValueError:
                 print('Warning: ValueError')
                 pass
+
+    print(total)
+
     return dataDict
 
 
+def consolidateDataDict(dataDict):
+    arr = np.array([])
+    keys = list(dataDict)
+
+    try:
+        keys.remove('Date')
+    except ValueError:
+        pass
+
+    for key in keys:
+        arr = np.append(arr, dataDict[key])
+    arr = arr.reshape(-1, len(keys))
+    return arr
+
+
+def calculateRateOfReturn(prices, period = 3):
+    prices = prices.flatten()
+    length = prices.shape[0] - prices.shape[0] % period 
+    startPrices = prices[0:length:period]
+    endPrices = prices[period - 1:length:period]
+    return np.log(endPrices) - np.log(startPrices)
+
+
+# Note: does not match functionality, currently it replaces NaN with 0
+def dropNan(x, y):
+    dfx = pd.DataFrame(x)
+    dfy = pd.DataFrame(y.T)
+    df = pd.concat([dfx, dfy], axis = 1)
+    df.dropna(axis = 0, how = 'any', inplace = True)
+    print(df)
+    return
+
+
 def test():
-    featureList = ['EPS Growth', 'Volatility 180 D', 'Trailing EPS', 'Price to Cash Flow', 'EPS', 'Volume', 'Return on Assets', 'Price to Book', 'Dividend Yield', 'Total Debt to Total Equity', 'Return on Invested Capital', 'Return on Common Equity']
-    client = pymongo.MongoClient('localhost', 27017, maxPoolSize=100)
-    db = client.stocklists
-    db2 = client.stocks
-    collection = db['stocklist']
-    cursor = collection.find()
-    result = pd.DataFrame(list(cursor))
     t = time.time()
-    epsgrowth = []
-    count = 0
-    for ticker in result['Tickers']:
-        collection = db2[ticker]
-        cursor = collection.find(filter = {"Date":{"$gt":"2017-12-1"}})
-        stockdata = pd.DataFrame(list(cursor))
-        if count == 6:
-            print(stockdata)
-            print(cursor.explain())
-            count += 1
-        else:
-            count += 1
-        for feature in featureList:
-            pass
+    dataDict = getDataAnomQuarterly('2016-1-1')
+    arr = consolidateDataDict(dataDict)
+    print(arr.shape)
+    print(time.time() - t)
+
+    t = time.time()
+    priceDict = getDataAnom('2016-1-1', fields = ['Last Price'], periodLimit = 3)
+    priceArr = consolidateDataDict(priceDict)
+    rorArr = calculateRateOfReturn(priceArr)
+    print(rorArr.shape)
+    print(time.time() - t)
+
+    t = time.time()
+    from sklearn.ensemble import RandomForestClassifier
+
+    Y = rorArr
+    X = arr
+
+    dropNan(X,Y)
+
+    rfc = RandomForestClassifier(n_estimators = 1000, class_weight = "balanced", min_samples_leaf = 1, n_jobs = -1)
+    rfc.fit(X,Y)
+    
+    print(time.time() - t)
+
     return
 
 
 if __name__ == '__main__':
-    getValidFields()
+    test()
+   
