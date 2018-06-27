@@ -175,7 +175,7 @@ def getDataAnomQuarterly(start, end = '2018-01-31', sector = 'stocklist', fields
             except ValueError:
                 print('Warning: ValueError')
                 pass
-
+    print(dataDict)
     print(total)
 
     return dataDict
@@ -206,26 +206,26 @@ def calculateRateOfReturn(prices, period = 3):
 
 # Note: does not match functionality, currently it replaces NaN with 0
 def dropNan(x, y):
-    dfx = pd.DataFrame(x)
-    dfy = pd.DataFrame(y.T)
-    df = pd.concat([dfx, dfy], axis = 1)
-    df.dropna(axis = 0, how = 'any', inplace = True)
-    print(df)
-    return
-
+    together = np.concatenate((x, np.matrix(y).T), axis = 1)
+    print(together.shape)
+    together = together[np.any(np.isnan(together), axis=0, keepdims = True)]
+    print(together)
+    dates, x, y = np.hsplit(together, [1,together.shape[0] - 1])
+    print(dates)
+    print(x)
+    print(y)
+    return x, y
 
 def test():
     t = time.time()
     dataDict = getDataAnomQuarterly('2016-1-1')
     arr = consolidateDataDict(dataDict)
-    print(arr.shape)
     print(time.time() - t)
 
     t = time.time()
     priceDict = getDataAnom('2016-1-1', fields = ['Last Price'], periodLimit = 3)
     priceArr = consolidateDataDict(priceDict)
     rorArr = calculateRateOfReturn(priceArr)
-    print(rorArr.shape)
     print(time.time() - t)
 
     t = time.time()
@@ -234,12 +234,12 @@ def test():
     Y = rorArr
     X = arr
 
-    dropNan(X,Y)
+    X,Y = dropNan(X,Y)
 
-    rfc = RandomForestClassifier(n_estimators = 1000, class_weight = "balanced", min_samples_leaf = 1, n_jobs = -1)
-    rfc.fit(X,Y)
+    #rfc = RandomForestClassifier(n_estimators = 1000, class_weight = "balanced", min_samples_leaf = 1, n_jobs = -1)
+    #rfc.fit(X,Y)
     
-    print(time.time() - t)
+    #print(time.time() - t)
 
     return
 
