@@ -1,0 +1,19 @@
+*.iml
+.DS_Store
+*.xml
+*.xlsm
+*.pyc
+*.csv
+djix.txt
+*.pdf
+*.jpg
+Finished Tests/.ipynb_checkpoints/
+Finished Tests/notebook.tex
+PortfolioTest(1000:est, 5:min_leaf).ipynb
+Finished Tests/output_26_2.png
+.ipynb_checkpoints/
+*.png
+Equity-Analysis/
+*.dot
+*.d
+*.o
