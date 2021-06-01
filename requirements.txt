@@ -44,6 +44,6 @@ SQLAlchemy==1.2.8
 tableschema==1.1.0
 tabulator==1.14.0
 unicodecsv==0.14.1
-urllib3==1.22
+urllib3==1.26.5
 xlrd==1.1.0
 zope.interface==4.5.0
